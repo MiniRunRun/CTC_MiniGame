@@ -1,10 +1,11 @@
 // Petals (花瓣): preset outlines and how they are arranged in rings/layers.
 import * as THREE from "three";
 import type { PetalShape, PetalSpec } from "./spec";
-import { buildBlade, ring, type RingPlacement } from "./blade";
+import { buildBlade, DRAWN_ROWS, ring, type RingPlacement } from "./blade";
+import { profileAt } from "./profile";
 
 /** Half-width of the petal at v (0 = base, 1 = tip), as a fraction of petal length. */
-export function petalWidth(shape: PetalShape, v: number): number {
+export function petalWidth(shape: PetalShape, v: number, drawn: number[]): number {
   const s = Math.sin(Math.PI * v);
   switch (shape) {
     case "round":
@@ -13,6 +14,8 @@ export function petalWidth(shape: PetalShape, v: number): number {
       return 0.24 * Math.pow(Math.sin(Math.PI * Math.pow(v, 1.4)), 0.9); // finite slope at the tip → point
     case "wavy":
       return 0.33 * Math.pow(s, 0.55) * (1 + 0.1 * Math.sin(v * Math.PI * 6));
+    case "drawn":
+      return profileAt(drawn, v);
   }
 }
 
@@ -20,7 +23,8 @@ export function buildPetalGeometry(spec: PetalSpec): THREE.BufferGeometry {
   const tip = new THREE.Color(spec.color);
   return buildBlade({
     length: spec.size,
-    halfWidth: (v) => petalWidth(spec.shape, v),
+    halfWidth: (v) => petalWidth(spec.shape, v, spec.drawn),
+    rows: spec.shape === "drawn" ? DRAWN_ROWS : 28,
     curvature: spec.curvature,
     cup: 0.12,
     ripple: spec.shape === "wavy" ? 0.06 : 0,

@@ -1,8 +1,14 @@
 // Slider panel: one collapsible section per flower part (see docs/GAME_DESIGN.md).
-// Every section has working controls (milestones 2–3). Free drawing of shapes comes in milestone 4.
+// Every section has working controls. Shape groups have a "Drawn 手绘" option that opens a drawing pad.
 import type { ReactNode } from "react";
 import { usePlant } from "../state/store";
 import { Choice, ColorPicker, Slider, cm, deg, mm, pct } from "./controls";
+import DrawPad from "./DrawPad";
+import { petalWidth } from "../plant/petal";
+import { leafWidth } from "../plant/leaf";
+import { budWidth, sepalWidth } from "../plant/sepal";
+
+const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
 function Section(props: { num: string; en: string; zh: string; open?: boolean; children: ReactNode }) {
   return (
@@ -61,8 +67,12 @@ function LeafControls() {
           { value: "oval", label: "Oval 椭圆" },
           { value: "slender", label: "Slender 细长" },
           { value: "serrated", label: "Serrated 锯齿" },
+          DRAWN,
         ]}
       />
+      {l.shape === "drawn" && (
+        <DrawPad width={(v) => leafWidth("drawn", v, l.drawn)} color={l.color} onDraw={(drawn) => set({ drawn })} />
+      )}
       <Slider label="Number 叶片数量" value={l.count} min={0} max={16} step={1} onChange={(count) => set({ count })} />
       <Slider label="Size 大小" value={l.size} min={0.04} max={0.3} step={0.005} format={cm} onChange={(size) => set({ size })} />
       <Choice
@@ -85,6 +95,7 @@ function SepalControls() {
   const sp = usePlant((st) => st.spec.sepals);
   const update = usePlant((st) => st.update);
   const set = (patch: Partial<typeof sp>) => update("sepals", patch);
+  const petalColor = usePlant((st) => st.spec.petals.color);
   return (
     <>
       <Slider label="Sepal Count 萼片数量" value={sp.count} min={0} max={10} step={1} onChange={(count) => set({ count })} />
@@ -96,8 +107,12 @@ function SepalControls() {
           { value: "pointed", label: "Pointed 尖形" },
           { value: "round", label: "Round 圆形" },
           { value: "narrow", label: "Narrow 细长" },
+          DRAWN,
         ]}
       />
+      {sp.shape === "drawn" && (
+        <DrawPad width={(v) => sepalWidth("drawn", v, sp.drawnSepal)} color={sp.color} onDraw={(drawnSepal) => set({ drawnSepal })} />
+      )}
       <Choice
         label="Bud Shape 花蕾形状"
         value={sp.budShape}
@@ -106,8 +121,12 @@ function SepalControls() {
           { value: "round", label: "Round 圆形" },
           { value: "oval", label: "Oval 椭圆" },
           { value: "pointed", label: "Pointed 尖形" },
+          DRAWN,
         ]}
       />
+      {sp.budShape === "drawn" && (
+        <DrawPad width={(v) => budWidth("drawn", v, sp.drawnBud)} color={petalColor} onDraw={(drawnBud) => set({ drawnBud })} />
+      )}
       <Slider label="Bud Count 花蕾数量" value={sp.budCount} min={0} max={8} step={1} onChange={(budCount) => set({ budCount })} />
       <ColorPicker label="Color 颜色" value={sp.color} onChange={(color) => set({ color })} />
     </>
@@ -153,8 +172,12 @@ function PetalControls() {
           { value: "round", label: "Round 圆形" },
           { value: "pointed", label: "Pointed 尖形" },
           { value: "wavy", label: "Wavy 波浪形" },
+          DRAWN,
         ]}
       />
+      {p.shape === "drawn" && (
+        <DrawPad width={(v) => petalWidth("drawn", v, p.drawn)} color={p.color} onDraw={(drawn) => set({ drawn })} />
+      )}
       <Slider label="Number 数量" value={p.count} min={3} max={24} step={1} onChange={(count) => set({ count })} />
       <Slider label="Layers 层数" value={p.layers} min={1} max={4} step={1} format={(n) => (n === 1 ? "1 · single 单层" : `${n} · multi 多层`)} onChange={(layers) => set({ layers })} />
       <Slider label="Size 大小" value={p.size} min={0.05} max={0.4} step={0.005} format={cm} onChange={(size) => set({ size })} />

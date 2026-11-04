@@ -64,10 +64,7 @@ export default function Plant() {
   const petal = useMemo(() => buildPetalGeometry(spec.petals), [spec.petals]);
   const sepal = useMemo(() => buildSepalGeometry(spec.sepals, spec.petals.size), [spec.sepals, spec.petals.size]);
   const leaf = useMemo(() => buildLeafGeometry(spec.leaves), [spec.leaves]);
-  const bud = useMemo(
-    () => buildBudGeometry(spec.sepals.budShape, spec.petals, spec.sepals.color),
-    [spec.sepals.budShape, spec.petals, spec.sepals.color],
-  );
+  const bud = useMemo(() => buildBudGeometry(spec.sepals, spec.petals), [spec.sepals, spec.petals]);
   const receptacle = useMemo(() => new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10), [spec.stem.thickness]);
   const center = useMemo(() => buildCenter(spec.center), [spec.center]);
 

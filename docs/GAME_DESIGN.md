@@ -55,6 +55,9 @@ These were not in the user's list. They were added because the 3D needs them; re
 ### Free drawing / 自由绘画
 
 Players draw flat 2D outlines (petal, leaf, sepal, bud profile) in a small drawing pad inside that part's panel section.
+How it works for the player (built in milestone 4): pick **Drawn 手绘 ✎** in a shape group → a pad appears with a
+starter shape → draw an outline (base at the bottom, tip at the top; one side is enough, it is mirrored) → the 3D
+updates when the stroke ends. Strokes add up until **Clear 清除**. Picking a preset switches back; the drawing is kept.
 The app turns the outline into a 3D shape by bending and cupping it with the sliders. Players do **not**
 sculpt in full 3D; that is too hard for players and too heavy for a minigame (see `DECISIONS.md`).
 

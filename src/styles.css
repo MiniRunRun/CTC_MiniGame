@@ -51,6 +51,14 @@ body {
 .choice { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
 .choice button { flex: 1 1 0; }
 .choice[data-n="4"] button { flex: 1 1 40%; } /* 4 options → 2×2 grid */
+.choice[data-n="5"] button { flex: 1 1 30%; } /* 5 options → 3 + 2 */
+
+.drawpad { display: grid; gap: 4px; }
+.drawpad canvas {
+  width: 100%; display: block; background: #1a1c20; border: 1px solid #3a3d44; border-radius: 4px;
+  cursor: crosshair; touch-action: none; /* let the finger draw instead of scrolling the panel */
+}
+.drawpad-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .choice button, .ghost {
   padding: 6px 4px; font: inherit; font-size: 12px; color: #c4c6cc; cursor: pointer;
   background: #1d1f24; border: 1px solid #3a3d44; border-radius: 4px;

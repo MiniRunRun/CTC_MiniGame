@@ -1,5 +1,7 @@
 // Flower settings ("specs"): plain data the sliders edit and the 3D builders read.
 // Units: meters and degrees. Keep this file free of three.js so specs stay small, saveable JSON.
+// "drawn" shapes use a width profile (see profile.ts) the player drew on a drawing pad.
+import { sampleProfile } from "./profile";
 
 export type StemShape = "straight" | "curved" | "spiral";
 
@@ -14,7 +16,7 @@ export interface StemSpec {
   color: string;
 }
 
-export type LeafShape = "heart" | "oval" | "slender" | "serrated";
+export type LeafShape = "heart" | "oval" | "slender" | "serrated" | "drawn";
 export type LeafArrangement = "alternate" | "opposite" | "whorled";
 
 export interface LeafSpec {
@@ -24,9 +26,10 @@ export interface LeafSpec {
   arrangement: LeafArrangement; // 互生 1 per node / 对生 2 per node / 轮生 3 per node
   angle: number; // angle between leaf and stem, 15 – 90°
   color: string;
+  drawn: number[]; // width profile used when shape = "drawn"
 }
 
-export type PetalShape = "round" | "pointed" | "wavy";
+export type PetalShape = "round" | "pointed" | "wavy" | "drawn";
 
 export interface PetalSpec {
   shape: PetalShape;
@@ -36,6 +39,7 @@ export interface PetalSpec {
   curvature: number; // -1 (curls down/out) – 1 (curls up/in)
   spread: number; // opening angle from the stem axis: 10° closed – 120° drooping
   color: string;
+  drawn: number[]; // width profile used when shape = "drawn"
 }
 
 export type CenterType = "disc" | "column" | "stamens";
@@ -48,8 +52,8 @@ export interface CenterSpec {
   color: string;
 }
 
-export type SepalShape = "pointed" | "round" | "narrow";
-export type BudShape = "round" | "oval" | "pointed";
+export type SepalShape = "pointed" | "round" | "narrow" | "drawn";
+export type BudShape = "round" | "oval" | "pointed" | "drawn";
 
 export interface SepalSpec {
   count: number; // sepals under each flower, 0 – 10
@@ -57,6 +61,8 @@ export interface SepalSpec {
   budShape: BudShape;
   budCount: number; // unopened buds on the plant, 0 – 8
   color: string;
+  drawnSepal: number[]; // width profile used when shape = "drawn"
+  drawnBud: number[]; // radius profile (base → top) used when budShape = "drawn"
 }
 
 export type ArchitectureMode = "single" | "branched" | "spike" | "cluster";
@@ -93,6 +99,8 @@ export const DEFAULT_SPEC: PlantSpec = {
     arrangement: "alternate",
     angle: 50,
     color: "#4a8a3a",
+    // Starter drawing: a lobed leaf (like oak), so "Drawn" looks different from the presets before the player draws.
+    drawn: sampleProfile((v) => 0.2 * Math.pow(4 * v * (1 - v), 0.6) * (0.75 + 0.25 * Math.sin(v * Math.PI * 8))),
   },
   petals: {
     shape: "round",
@@ -102,6 +110,8 @@ export const DEFAULT_SPEC: PlantSpec = {
     curvature: 0.25,
     spread: 70,
     color: "#e98bb0",
+    // Starter drawing: a spoon-shaped petal, narrow at the base and wide near the tip.
+    drawn: sampleProfile((v) => 0.34 * Math.pow(Math.sin(Math.PI * v), 0.5) * (0.4 + 0.6 * v)),
   },
   center: {
     type: "disc",
@@ -116,6 +126,8 @@ export const DEFAULT_SPEC: PlantSpec = {
     budShape: "oval",
     budCount: 1,
     color: "#5d9a45",
+    drawnSepal: sampleProfile((v) => 0.16 * Math.pow(1 - v, 0.8) * Math.pow(Math.min(1, v * 6), 0.5)),
+    drawnBud: sampleProfile((v) => 0.35 * Math.sin(Math.PI * Math.pow(v, 0.6))),
   },
   architecture: {
     mode: "single",

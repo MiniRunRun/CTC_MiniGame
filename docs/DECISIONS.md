@@ -13,6 +13,16 @@ Template:
 
 ---
 
+## 2026-11-04 — Drawings become symmetric width profiles; pad shown only when "Drawn" is picked
+
+**Choice:** A drawing is reduced to a half-width per row, mirrored around the pad's center line. Each shape
+group gets a "Drawn 手绘" option; the pad only appears when it's selected.
+**Why:** It reuses the existing blade/lathe builders, so drawn parts bend, curl and instance like presets.
+Mirroring around the visible center line (not the drawing's own middle) lets players draw just one side.
+Showing pads only on demand keeps the panel short (4 pads would be long).
+**Trade-off:** asymmetric shapes, notches at the tip and holes can't be drawn. A true 2D outline
+(triangulated polygon) could support them later, but bending it is harder.
+
 ## 2026-11-04 — Instanced rendering for repeated parts (milestone 3)
 
 **Choice:** Every repeated part type (petals, sepals, leaves, buds, receptacles, each flower-center part) is drawn

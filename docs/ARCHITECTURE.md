@@ -1,6 +1,6 @@
 # Architecture: Flower Building Tool
 
-How the 3D flower builder works technically. **Status: milestones 1–3 done (see Build order).**
+How the 3D flower builder works technically. **Status: milestones 1–4 done (see Build order).**
 When code is written, keep this file matching the code.
 
 ## Tech stack
@@ -66,7 +66,15 @@ small JSON file, which the garden can reuse later.
   - *curvature* bends it along its length,
   - *cupping* bends it across its width,
   - *spread* rotates it open from the center.
-  Drawn outlines (milestone 4) will be smoothed, mirrored to be symmetric, and converted to the same `w(v)` profile.
+- **Drawn shapes (`src/plant/profile.ts`, `src/ui/DrawPad.tsx`):** each shape group has a "Drawn 手绘" option.
+  Picking it opens a 240×150 pad showing the current drawn silhouette (a starter shape until the player draws).
+  Base = bottom of the drawing, tip = top; its height = the part's length. `strokesToProfile(strokes, axisX)`
+  takes, for each of 65 rows, the farthest stroke point from the pad's dashed center line → half-width ÷ height,
+  fills empty rows by interpolation, smooths lightly, clamps to 0.8. So a full outline or one side gives the
+  same result (mirrored). Profiles are stored in the spec as number arrays: `petals.drawn`, `leaves.drawn`,
+  `sepals.drawnSepal`, `sepals.drawnBud`. Drawn blades use 64 rows so details survive. Drawn buds read the
+  profile as radius ÷ height and are lathed.
+  **Limit:** only the widest point per row counts, so notches cut into the tip and holes are filled in.
   Material is double-sided.
 - **Placement on the stem (phyllotaxis):** alternate = 180° turns, opposite = pairs, whorled = N per node.
   Petals sit in rings; extra layers are smaller, rotated rings.
@@ -108,6 +116,6 @@ small JSON file, which the garden can reuse later.
 1. ✅ Vite + React + R3F app with a 3D scene, placeholder plant and empty panel sections; Pages deploy workflow.
 2. ✅ Stem + petals + center driven by the slider panel (zustand store → `src/plant/*` builders → `Plant.tsx`).
 3. ✅ Leaves, sepals, buds, the 4 architecture modes and stem branching; instanced rendering.
-4. Drawing pad → outline → 3D shape.
+4. ✅ Drawing pad → width profile → 3D shape, for petals, leaves, sepals and buds.
 5. Polish the slider panel UI (sections, presets, randomize button).
 6. Save/load flower as JSON.

@@ -13,6 +13,24 @@ Template:
 
 ---
 
+## 2026-11-04 — Milestone 4: free drawing
+
+**Done:**
+- `src/plant/profile.ts`: `strokesToProfile` (drawing → 65-sample half-width profile), `profileAt`, `sampleProfile`.
+- `src/ui/DrawPad.tsx`: canvas pad (mouse, pen, touch), silhouette preview, Clear.
+- "Drawn 手绘 ✎" option for petal shape, leaf shape, sepal shape and bud shape, each with its own starter drawing.
+- Tested: a drawn circle converts within 0.6% of the true shape; one-sided and full drawings match; tiny
+  scribbles are ignored; drawing on each pad updates the 3D (lobed leaves, needle sepals, onion bud). No console errors.
+
+**Not finished / known issues:**
+- Notches/holes and asymmetric shapes can't be drawn (see DECISIONS.md).
+- No undo beyond Clear; drawings are lost on page reload (save/load is milestone 6).
+- Testing tip: in the dev page, `import('/src/state/store.ts')` from the console can give a *different* copy of
+  the store than the app uses (HMR), so read state from the UI instead.
+- GitHub Pages source still needs to be set to GitHub Actions by the user. "CTC" meaning still unknown.
+
+**Next:** Milestone 5 (panel polish: presets, randomize) and 6 (save/load flower as JSON).
+
 ## 2026-11-04 — Milestone 3: leaves, sepals & buds, architecture
 
 **Done:**

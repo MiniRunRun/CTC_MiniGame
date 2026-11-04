@@ -1,8 +1,11 @@
 // Shared builder for thin, bendable sheets: petals, leaves and sepals are all "blades".
 // A blade is described by a half-width profile w(v): v runs base (0) → tip (1), w is a fraction of
 // the blade length. The surface is a grid (rows along the length × columns across the width), so it
-// can bend smoothly. Later, a player-drawn outline will be converted to the same w(v) profile.
+// can bend smoothly. A player-drawn outline is converted to the same w(v) profile (see profile.ts).
 import * as THREE from "three";
+
+/** Rows along the length for drawn shapes: one per profile sample, so drawn details (teeth, lobes) survive. */
+export const DRAWN_ROWS = 64;
 
 export interface BladeOptions {
   length: number;
