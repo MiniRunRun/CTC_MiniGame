@@ -8,7 +8,7 @@ must be in this repository. If it isn't written here, it doesn't exist.
 
 - **Name:** CTC MiniGame
 - **Owner:** MiniRunRun (GitHub)
-- **Goal:** A *Digital Garden* browser minigame, published with **GitHub Pages**. First feature: a 3D flower building tool with a Blender-style node editor.
+- **Goal:** A *Digital Garden* browser minigame, published with **GitHub Pages**. First feature: a 3D flower building tool (slider panel + live 3D preview).
 - **Current status:** See [`docs/PROGRESS.md`](docs/PROGRESS.md). The top entry is the latest state.
 
 ## 2. Where things are
@@ -66,5 +66,5 @@ These rules exist so the next agent can pick up without anyone explaining anythi
 
 - The user writes in both Chinese and English. Reply in the language they use.
 - The user wants the repository to be fully self-explanatory to future agents (that is why this file exists).
-- The user likes **Blender's node editor** style of visualization; the flower builder UI should feel like it.
+- The user likes **Blender-style node diagrams** for picturing plans and data flow. Use them when explaining structure to the user. **Do not** build a node editor into the game; players use a slider panel.
 - Everything in the flower builder must be **3D**.

@@ -8,35 +8,37 @@ When code is written, keep this file matching the code.
 | Job | Library | Why |
 |-----|---------|-----|
 | Build tool | **Vite** + TypeScript | Fast dev server; outputs static files for GitHub Pages. |
-| UI | **React** | Needed by the node editor and 3D libraries below. |
-| Node editor (Blender-like) | **React Flow** (`@xyflow/react` v12) | Actively maintained; nodes are normal React components, so sliders, dropdowns, color pickers and a drawing pad fit inside a node easily. Can be styled dark like Blender. |
+| UI | **React** | Slider panel, drawing pad and later garden screens as components; works with React Three Fiber. |
 | 3D | **three.js** via **React Three Fiber** + **drei** | Standard WebGL engine for the web; runs on GitHub Pages; drei gives camera controls and lighting. |
-| State | **zustand** | One store holds the node graph; both the node editor and the 3D view read it. |
+| State | **zustand** | One store holds the flower settings; the slider panel writes it and the 3D view reads it. |
 
-Versions checked 2026-11-04: three 0.187, @react-three/fiber 9.8, drei 10.7, @xyflow/react 12.12, zustand 5.0, vite 8.3.
+Versions checked 2026-11-04: three 0.187, @react-three/fiber 9.8, drei 10.7, zustand 5.0, vite 8.3.
 
-Alternatives considered: Rete.js v2 (also good, more setup), litegraph.js (ComfyUI-style look, but the npm
-package is old/unmaintained), Babylon.js (fine, but R3F + React Flow share one React app more simply).
+Alternatives considered: Babylon.js (fine, but R3F fits a React UI more simply); plain three.js + Tweakpane
+(lighter, but custom panels and later game screens are easier in React).
+**No node editor library** (React Flow, Rete, litegraph): the user decided players get a slider panel, not nodes.
 
 ## Screen layout
 
 ```
-┌──────────────────────────────┬──────────────────────┐
-│  Node editor (React Flow)    │  3D preview (R3F)    │
-│  [Stem]──┐                   │  orbit / zoom        │
-│  [Leaf Shape]→[Leaves]──┤    │                      │
-│  [Petal Shape]→[Petals]─┼→[Flower Head]→[Architecture]→[Plant Output]
-│  [Center]───────────────┤    │                      │
-│  [Sepals & Buds]────────┘    │                      │
-└──────────────────────────────┴──────────────────────┘
+┌──────────────────────┬──────────────────────────────┐
+│ Slider panel         │                              │
+│ ▸ 01 Stem            │                              │
+│ ▸ 02 Leaves  [draw]  │      3D preview (R3F)        │
+│ ▸ 03 Petals  [draw]  │      orbit / zoom            │
+│ ▸ 04 Center          │                              │
+│ ▸ 05 Sepals & Buds   │                              │
+│ ▸ 06 Architecture    │                              │
+└──────────────────────┴──────────────────────────────┘
 ```
-On phones, the panels stack (3D on top, nodes below).
+On phones, the 3D view sits on top and the panel scrolls below it.
 
-## Node types
+## Data model (how the parts feed into the plant)
 
-Like Blender Geometry Nodes, wires carry data of a type. Socket colors show the type.
+Not a UI: this is the internal pipeline. The user likes to picture it as a Blender-style node graph.
+Each panel section edits one "spec" object; specs combine into the plant.
 
-| Node | Inputs | Output |
+| Part | Inputs | Output |
 |------|--------|--------|
 | **Shape** (preset or drawn) | preset dropdown or drawing pad | `Outline2D` (list of 2D points) |
 | **Stem** | sliders: shape, length, thickness, branching, direction | `StemSpec` |
@@ -48,7 +50,7 @@ Like Blender Geometry Nodes, wires carry data of a type. Socket colors show the 
 | **Architecture** | Stem + Leaves + Flower Head, mode: single / branched / spike / cluster | `PlantSpec` |
 | **Plant Output** | `PlantSpec` | drives the 3D preview |
 
-The node graph only holds **numbers and outlines** (small JSON). A separate pure function
+The specs only hold **numbers and outlines** (small JSON). A separate pure function
 `buildPlant(plantSpec) → three.js Group` makes the meshes. This keeps it fast and lets a saved flower be one
 small JSON file, which the garden can reuse later.
 
@@ -82,7 +84,7 @@ small JSON file, which the garden can reuse later.
 |-------------|---------|-------|
 | All parts with sliders | ✅ Yes | Standard procedural geometry. |
 | Live 3D update | ✅ Yes | Rebuild only the part that changed; use instancing for repeated parts. |
-| Blender-style node UI | ✅ Yes | React Flow + custom node components and dark theme. |
+| Slider panel UI | ✅ Yes | One section per part, live 3D update. |
 | Free drawing of shapes | ✅ Yes, as 2D outline → bent 3D | Full 3D sculpting by players is not recommended. |
 | 4 architecture types | ✅ Yes | Same flower-head builder reused in different layouts. |
 | Host on GitHub Pages | ✅ Yes | Vite build + GitHub Actions deploy workflow. |
@@ -94,5 +96,5 @@ small JSON file, which the garden can reuse later.
 2. Stem + petals + center as a **plain slider panel** (no nodes yet) to get the 3D look right.
 3. Leaves, sepals, buds, and the 4 architecture modes.
 4. Drawing pad → outline → 3D shape.
-5. Swap the slider panel for the React Flow node editor.
+5. Polish the slider panel UI (sections, presets, randomize button).
 6. Save/load flower as JSON.

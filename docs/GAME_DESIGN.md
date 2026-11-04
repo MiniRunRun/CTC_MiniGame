@@ -13,8 +13,10 @@ How it is built technically lives in [`ARCHITECTURE.md`](ARCHITECTURE.md).
 The player builds one flower plant. Every part has preset shapes **and** can be freely drawn by the
 player (自由绘画). Every part has sliders. Everything is shown live in **3D**.
 
-**UI style (user requirement):** visualized like **Blender's node editor**. Each part is a node box with
-sliders and dropdowns; wires connect nodes into the final plant; a 3D preview updates live.
+**UI style:** a **side panel of sliders**, one collapsible section per part (Stem, Leaves, Petals, Center,
+Sepals & Buds, Architecture), next to a big live 3D preview the player can rotate and zoom.
+**No node editor in the game.** The user likes Blender-style node diagrams only for *picturing the plan*
+(how the parts feed into the plant). It is not a player-facing UI.
 
 ### Parts and controls
 
@@ -40,7 +42,7 @@ After the parts, the player picks how the whole plant is organized:
 
 ### Free drawing / 自由绘画
 
-Players draw flat 2D outlines (petal, leaf, sepal, bud profile) in a small drawing pad inside the node.
+Players draw flat 2D outlines (petal, leaf, sepal, bud profile) in a small drawing pad inside that part's panel section.
 The app turns the outline into a 3D shape by bending and cupping it with the sliders. Players do **not**
 sculpt in full 3D; that is too hard for players and too heavy for a minigame (see `DECISIONS.md`).
 

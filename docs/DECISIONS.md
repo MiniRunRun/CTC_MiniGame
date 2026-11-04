@@ -13,13 +13,18 @@ Template:
 
 ---
 
+## 2026-11-04 — No node editor in the game; slider panel instead
+
+**Choice:** Players edit flowers with a slider panel (one section per part) beside a live 3D preview.
+**Why:** The user said the Blender node look was only to help *them* picture the plan, not a player UI.
+**Effect:** React Flow removed from the stack; node graphs are only used in diagrams explaining the design.
+
 ## 2026-11-04 — Tech for the 3D flower builder (status: proposed, waiting for user OK)
 
-**Choice:** Vite + React + TypeScript, three.js via React Three Fiber, React Flow for the Blender-style node editor,
-zustand for state. Details in `ARCHITECTURE.md`.
-**Why:** The user wants 3D and a Blender-node look. React Flow is the most maintained node-editor library and lets
-sliders and a drawing pad live inside nodes; R3F lets the 3D view share the same React app and state.
-**Alternatives considered:** Rete.js v2, litegraph.js (unmaintained npm package), Babylon.js, plain three.js without React.
+**Choice:** Vite + React + TypeScript, three.js via React Three Fiber, zustand for state. (React Flow was in the
+first draft; removed, see entry above.) Details in `ARCHITECTURE.md`.
+**Why:** The user wants everything in 3D. R3F lets the 3D view share one React app and state with the slider panel.
+**Alternatives considered:** Babylon.js, plain three.js + Tweakpane.
 **Note:** this replaces the earlier "no build step" decision once approved. GitHub Pages will then be deployed by a
 GitHub Actions workflow that runs the Vite build.
 

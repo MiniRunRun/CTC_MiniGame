@@ -13,6 +13,13 @@ Template:
 
 ---
 
+## 2026-11-04 — Dropped the node editor
+
+**Done:** User clarified: no node editor in the game; nodes were only for picturing the plan. Updated
+`GAME_DESIGN.md`, `ARCHITECTURE.md`, `DECISIONS.md` and `AGENTS.md` to a slider panel + 3D preview.
+**Not finished / known issues:** Same as the entry below (tech OK pending, repo not on GitHub, "CTC" unknown).
+**Next:** Milestone 1 in `ARCHITECTURE.md` once the user approves.
+
 ## 2026-11-04 — Flower builder researched and planned
 
 **Done:**
