@@ -8,7 +8,7 @@ must be in this repository. If it isn't written here, it doesn't exist.
 
 - **Name:** CTC MiniGame
 - **Owner:** MiniRunRun (GitHub)
-- **Goal:** A small browser game, published with **GitHub Pages**.
+- **Goal:** A *Digital Garden* browser minigame, published with **GitHub Pages**. First feature: a 3D flower building tool with a Blender-style node editor.
 - **Current status:** See [`docs/PROGRESS.md`](docs/PROGRESS.md). The top entry is the latest state.
 
 ## 2. Where things are
@@ -21,6 +21,7 @@ must be in this repository. If it isn't written here, it doesn't exist.
 | `docs/PROGRESS.md` | Running log of what was done, newest first. **Always update.** |
 | `docs/DECISIONS.md` | Why things were done a certain way. **Add an entry for every real choice.** |
 | `docs/GAME_DESIGN.md` | What the game is: rules, controls, art style, goals. |
+| `docs/ARCHITECTURE.md` | How it is built: tech stack, node types, how each flower part becomes 3D, build order. |
 | `README.md` | Short public description for humans visiting the repo. |
 | `CLAUDE.md` | Points Claude Code to this file. |
 
@@ -28,7 +29,7 @@ Keep this table up to date when you add or move folders.
 
 ## 3. How to run it
 
-No build step. It's plain HTML/CSS/JS.
+Right now: no build step, plain HTML/CSS/JS. **Planned:** switch to Vite + React (see `docs/ARCHITECTURE.md`); update this section when that happens.
 
 ```bash
 python3 -m http.server 8000
@@ -48,7 +49,7 @@ If a build step is ever added, update this section with the exact commands.
 
 These rules exist so the next agent can pick up without anyone explaining anything.
 
-1. **Read before working:** read this file, `docs/PROGRESS.md`, and `docs/GAME_DESIGN.md` before changing code.
+1. **Read before working:** read this file, `docs/PROGRESS.md`, `docs/GAME_DESIGN.md` and `docs/ARCHITECTURE.md` before changing code.
 2. **Log every session:** add a new entry at the **top** of `docs/PROGRESS.md` with:
    - the date (YYYY-MM-DD),
    - what you changed (files and features),
@@ -65,3 +66,5 @@ These rules exist so the next agent can pick up without anyone explaining anythi
 
 - The user writes in both Chinese and English. Reply in the language they use.
 - The user wants the repository to be fully self-explanatory to future agents (that is why this file exists).
+- The user likes **Blender's node editor** style of visualization; the flower builder UI should feel like it.
+- Everything in the flower builder must be **3D**.
