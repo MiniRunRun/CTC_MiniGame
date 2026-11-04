@@ -13,6 +13,14 @@ Template:
 
 ---
 
+## 2026-11-04 — Pushed to GitHub
+
+**Done:** The user created `https://github.com/MiniRunRun/CTC_MiniGame` (GitHub username confirmed: `MiniRunRun`)
+and cloned it. Local history was merged in and pushed. The working copy is the clone.
+**Not finished / known issues:** GitHub Pages must be turned on (Settings → Pages → `main`, `/ (root)`).
+Tech stack approval and the meaning of "CTC" are still open.
+**Next:** Milestone 1 in `ARCHITECTURE.md` once the user approves.
+
 ## 2026-11-04 — Dropped the node editor
 
 **Done:** User clarified: no node editor in the game; nodes were only for picturing the plan. Updated
@@ -29,7 +37,6 @@ Template:
 
 **Not finished / known issues:**
 - Tech choice waits for the user's OK.
-- Still not pushed to GitHub: waiting for the user to create the empty repo and give its URL (repo links in docs assume username `MiniRunRun`, which may be wrong; the saved git login shows `200283228`).
 - "CTC" meaning still unknown.
 
 **Next:**
