@@ -17,8 +17,10 @@ must be in this repository. If it isn't written here, it doesn't exist.
 |------|------------|
 | `index.html` | Vite entry page; loads `src/main.tsx`. |
 | `src/main.tsx`, `src/App.tsx` | React entry and top-level layout (panel + 3D view). |
-| `src/ui/` | 2D interface: the slider panel (`Panel.tsx`). |
-| `src/scene/` | 3D: `Viewport.tsx` (camera, lights, ground, controls) and plant meshes. `PlaceholderPlant.tsx` is temporary. |
+| `src/plant/` | Pure flower logic, no React. `spec.ts` = settings types + defaults; `stem.ts`, `petal.ts`, `center.ts` = settings → three.js geometry. |
+| `src/state/store.ts` | zustand store holding the current `PlantSpec`. Panel writes, scene reads. |
+| `src/ui/` | 2D interface: `Panel.tsx` (sections per part) and `controls.tsx` (Slider, Choice, ColorPicker). |
+| `src/scene/` | 3D: `Viewport.tsx` (camera, lights, ground, controls) and `Plant.tsx` (turns the spec into meshes). |
 | `src/styles.css` | Global styles. |
 | `assets/` | Images, sounds, fonts. |
 | `vite.config.ts`, `tsconfig.json`, `package.json` | Build setup. |
@@ -44,6 +46,9 @@ npm run build      # type-check + production build into dist/
 ```
 
 The build warns that the JS bundle is over 500 kB. That is expected (three.js). Ignore unless it grows a lot.
+
+If the dev page goes blank with "Invalid hook call" in the console after adding a new library: stop the dev
+server, delete `node_modules/.vite`, start again, and add the library to `optimizeDeps.include` in `vite.config.ts`.
 
 ## 4. How it gets published
 

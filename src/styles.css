@@ -35,7 +35,27 @@ body {
 .section summary { cursor: pointer; padding: 10px 12px; font-size: 14px; }
 .section .num { color: #7fbf8f; font-variant-numeric: tabular-nums; margin-right: 4px; }
 .section .zh { color: #9a9ca3; }
-.section .todo { margin: 0; padding: 0 12px 12px; font-size: 13px; color: #9a9ca3; }
+.section-body { padding: 0 12px 12px; display: grid; gap: 10px; }
+.hint { margin: 0; font-size: 12px; color: #9a9ca3; }
+
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.panel-head h1 { margin: 0; }
+
+/* Controls: label on top, input + value on one row */
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; font-size: 12px; }
+.ctl-label { grid-column: 1 / -1; color: #c4c6cc; }
+.ctl-value { color: #9a9ca3; font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.ctl input[type="range"] { width: 100%; accent-color: #7fbf8f; }
+.ctl input[type="color"] { width: 100%; height: 24px; padding: 0; border: 1px solid #3a3d44; border-radius: 4px; background: none; }
+
+.choice { grid-column: 1 / -1; display: flex; gap: 4px; }
+.choice button, .ghost {
+  flex: 1; padding: 6px 4px; font: inherit; font-size: 12px; color: #c4c6cc; cursor: pointer;
+  background: #1d1f24; border: 1px solid #3a3d44; border-radius: 4px;
+}
+.choice button.on { background: #35553f; border-color: #7fbf8f; color: #fff; }
+.ghost { flex: none; padding: 4px 10px; }
+.choice button:hover, .ghost:hover { border-color: #7fbf8f; }
 
 .viewport { min-width: 0; min-height: 0; }
 

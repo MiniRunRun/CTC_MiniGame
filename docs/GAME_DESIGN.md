@@ -40,6 +40,14 @@ After the parts, the player picks how the whole plant is organized:
 3. **Flower Spike** 穗状花序: many flowers along one tall stem (e.g. lavender).
 4. **Flower Cluster** 聚集式花序: many short stalks from one point forming a dome (e.g. hydrangea / umbel).
 
+### Extra controls added beyond the user's list (milestone 2)
+
+These were not in the user's list. They were added because the 3D needs them; remove if the user objects.
+- Stem: **Bend 弯曲度** (how strong the curve/spiral is), **Lean 倾斜 + Direction 生长方向** (tilt and its compass
+  direction; together they are "growth direction"), **Color**.
+- Petals: **Size 大小**, **Color** (fades lighter toward the base). Layers is a 1–4 slider (1 = single, 2+ = multi).
+- A **Reset 重置** button.
+
 ### Free drawing / 自由绘画
 
 Players draw flat 2D outlines (petal, leaf, sepal, bud profile) in a small drawing pad inside that part's panel section.

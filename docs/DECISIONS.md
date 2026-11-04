@@ -13,6 +13,14 @@ Template:
 
 ---
 
+## 2026-11-04 — Petals as width-profile grids; merged geometry for small parts
+
+**Choice:** Petal (and later leaf/sepal) shapes are a half-width function `w(v)` sampled onto a row×column grid.
+Florets/stamens are merged into one geometry per color instead of using `InstancedMesh`.
+**Why:** A grid can bend smoothly along and across the petal; `ShapeGeometry` only has outline vertices.
+Merging is simpler than instancing and fast enough at ≤400 parts; switch to `InstancedMesh` if the garden
+shows many flowers at once.
+
 ## 2026-11-04 — Deploy with GitHub Actions, relative base path
 
 **Choice:** `.github/workflows/deploy.yml` builds and deploys to Pages; `vite.config.ts` uses `base: "./"`.

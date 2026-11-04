@@ -13,6 +13,23 @@ Template:
 
 ---
 
+## 2026-11-04 — Milestone 2: stem, petals, center with sliders
+
+**Done:**
+- Settings model `src/plant/spec.ts` + zustand store `src/state/store.ts`.
+- Builders: `stem.ts` (straight/curved/spiral, tapered tube, lean), `petal.ts` (round/pointed/wavy, curvature,
+  spread, layers, color fade), `center.ts` (disc/column/stamens, sunflower-spiral density).
+- `src/scene/Plant.tsx` puts it together; flower head follows the stem's tip direction. Placeholder plant removed.
+- Panel: working controls for Stem, Petals, Center + Reset. Camera can zoom to 25 cm; extra fill light.
+- Tested in the browser: every shape/type, sliders at min/max, Reset. No console errors. `npm run build` passes.
+
+**Not finished / known issues:**
+- Leaves, Sepals & Buds, Architecture, Branching: not started (milestone 3).
+- GitHub Pages: check the user switched Pages source to GitHub Actions (the first deploy failed for that reason).
+- "CTC" meaning still unknown.
+
+**Next:** Milestone 3: leaves (shapes, arrangement), sepals & buds, and the 4 architecture modes incl. branching.
+
 ## 2026-11-04 — Milestone 1: app skeleton
 
 **Done:**

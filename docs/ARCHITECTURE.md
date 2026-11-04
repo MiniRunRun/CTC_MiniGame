@@ -1,6 +1,6 @@
 # Architecture: Flower Building Tool
 
-How the 3D flower builder works technically. **Status: milestone 1 done (see Build order).**
+How the 3D flower builder works technically. **Status: milestones 1–2 done (see Build order).**
 When code is written, keep this file matching the code.
 
 ## Tech stack
@@ -59,18 +59,20 @@ small JSON file, which the garden can reuse later.
 - **Stem:** a 3D curve (`CatmullRomCurve3`) made from the shape: straight line, bent arc, or helix (spiral).
   Direction tilts it. `TubeGeometry` wraps it with the thickness, tapering toward the tip. Branches are child curves
   that start at points along the parent.
-- **Leaves, petals, sepals (preset or drawn):** the 2D outline is filled into a flat mesh (`ShapeGeometry`, which
-  uses earcut triangulation), then the vertices are bent:
+- **Leaves, petals, sepals (preset or drawn):** the outline is stored as a **half-width profile** `w(v)`
+  (v = 0 base → 1 tip). The surface is a grid of rows along the length and columns across the width, so it
+  bends smoothly (a plain `ShapeGeometry` has no inner vertices and can't bend). Implemented for petals in
+  `src/plant/petal.ts` (`petalWidth`, `buildPetalGeometry`). Then the vertices are bent:
   - *curvature* bends it along its length,
   - *cupping* bends it across its width,
   - *spread* rotates it open from the center.
-  Drawn outlines are smoothed and resampled to a fixed number of points first, so messy drawings still work.
+  Drawn outlines (milestone 4) will be smoothed, mirrored to be symmetric, and converted to the same `w(v)` profile.
   Material is double-sided.
 - **Placement on the stem (phyllotaxis):** alternate = 180° turns, opposite = pairs, whorled = N per node.
   Petals sit in rings; extra layers are smaller, rotated rings.
-- **Flower center:** disc = flattened sphere; column = cylinder/cone; stamen cluster = many small stalks with
-  tips spread in a sunflower spiral (golden angle 137.5°). Density = how many. Uses `InstancedMesh` so hundreds
-  of stamens stay fast.
+- **Flower center:** disc = flattened dome; column = cone-like cylinder; stamens = thin filaments with anthers
+  around a taller pistil. Florets/stamens are placed in a sunflower spiral (golden angle 137.5°); density = how many.
+  Small repeated parts are merged into one geometry per color (`mergeGeometries`), so 400 parts = a few draw calls.
 - **Buds:** a lathe (`LatheGeometry`) of the bud profile (egg / pointed / round), wrapped in small sepals.
 - **Architecture:**
   - Single: one stem → one flower head.
@@ -93,7 +95,7 @@ small JSON file, which the garden can reuse later.
 ## Build order (milestones)
 
 1. ✅ Vite + React + R3F app with a 3D scene, placeholder plant and empty panel sections; Pages deploy workflow.
-2. Stem + petals + center as a **plain slider panel** (no nodes yet) to get the 3D look right.
+2. ✅ Stem + petals + center driven by the slider panel (zustand store → `src/plant/*` builders → `Plant.tsx`).
 3. Leaves, sepals, buds, and the 4 architecture modes.
 4. Drawing pad → outline → 3D shape.
 5. Polish the slider panel UI (sections, presets, randomize button).
