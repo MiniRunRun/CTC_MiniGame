@@ -1,5 +1,5 @@
 // Slider panel: one collapsible section per flower part (see docs/GAME_DESIGN.md).
-// Stem, Petals and Center work (milestone 2). Leaves, Sepals & Buds and Architecture come in milestone 3.
+// Every section has working controls (milestones 2–3). Free drawing of shapes comes in milestone 4.
 import type { ReactNode } from "react";
 import { usePlant } from "../state/store";
 import { Choice, ColorPicker, Slider, cm, deg, mm, pct } from "./controls";
@@ -19,6 +19,7 @@ function StemControls() {
   const s = usePlant((st) => st.spec.stem);
   const update = usePlant((st) => st.update);
   const set = (patch: Partial<typeof s>) => update("stem", patch);
+  const mode = usePlant((st) => st.spec.architecture.mode);
   return (
     <>
       <Choice
@@ -39,7 +40,101 @@ function StemControls() {
       <Slider label="Lean 倾斜" value={s.lean} min={0} max={60} step={1} format={deg} onChange={(lean) => set({ lean })} />
       <Slider label="Direction 生长方向" value={s.leanDirection} min={0} max={360} step={1} format={deg} onChange={(leanDirection) => set({ leanDirection })} />
       <ColorPicker label="Color 颜色" value={s.color} onChange={(color) => set({ color })} />
-      <p className="hint">Branching 分枝 arrives with Architecture (milestone 3).</p>
+      <Slider label="Branching 分枝数量" value={s.branches} min={1} max={6} step={1} onChange={(branches) => set({ branches })} />
+      {mode !== "branched" && <p className="hint">Branching is used by the Branched Flower architecture (06).</p>}
+    </>
+  );
+}
+
+function LeafControls() {
+  const l = usePlant((st) => st.spec.leaves);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<typeof l>) => update("leaves", patch);
+  return (
+    <>
+      <Choice
+        label="Shape 形状"
+        value={l.shape}
+        onChange={(shape) => set({ shape })}
+        options={[
+          { value: "heart", label: "Heart 心形" },
+          { value: "oval", label: "Oval 椭圆" },
+          { value: "slender", label: "Slender 细长" },
+          { value: "serrated", label: "Serrated 锯齿" },
+        ]}
+      />
+      <Slider label="Number 叶片数量" value={l.count} min={0} max={16} step={1} onChange={(count) => set({ count })} />
+      <Slider label="Size 大小" value={l.size} min={0.04} max={0.3} step={0.005} format={cm} onChange={(size) => set({ size })} />
+      <Choice
+        label="Arrangement 排列"
+        value={l.arrangement}
+        onChange={(arrangement) => set({ arrangement })}
+        options={[
+          { value: "alternate", label: "Alternate 互生" },
+          { value: "opposite", label: "Opposite 对生" },
+          { value: "whorled", label: "Whorled 轮生" },
+        ]}
+      />
+      <Slider label="Angle 生长角度" value={l.angle} min={15} max={90} step={1} format={deg} onChange={(angle) => set({ angle })} />
+      <ColorPicker label="Color 颜色" value={l.color} onChange={(color) => set({ color })} />
+    </>
+  );
+}
+
+function SepalControls() {
+  const sp = usePlant((st) => st.spec.sepals);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<typeof sp>) => update("sepals", patch);
+  return (
+    <>
+      <Slider label="Sepal Count 萼片数量" value={sp.count} min={0} max={10} step={1} onChange={(count) => set({ count })} />
+      <Choice
+        label="Sepal Shape 萼片形状"
+        value={sp.shape}
+        onChange={(shape) => set({ shape })}
+        options={[
+          { value: "pointed", label: "Pointed 尖形" },
+          { value: "round", label: "Round 圆形" },
+          { value: "narrow", label: "Narrow 细长" },
+        ]}
+      />
+      <Choice
+        label="Bud Shape 花蕾形状"
+        value={sp.budShape}
+        onChange={(budShape) => set({ budShape })}
+        options={[
+          { value: "round", label: "Round 圆形" },
+          { value: "oval", label: "Oval 椭圆" },
+          { value: "pointed", label: "Pointed 尖形" },
+        ]}
+      />
+      <Slider label="Bud Count 花蕾数量" value={sp.budCount} min={0} max={8} step={1} onChange={(budCount) => set({ budCount })} />
+      <ColorPicker label="Color 颜色" value={sp.color} onChange={(color) => set({ color })} />
+    </>
+  );
+}
+
+function ArchitectureControls() {
+  const a = usePlant((st) => st.spec.architecture);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<typeof a>) => update("architecture", patch);
+  return (
+    <>
+      <Choice
+        label="Structure 结构"
+        value={a.mode}
+        onChange={(mode) => set({ mode })}
+        options={[
+          { value: "single", label: "Single 单茎单花" },
+          { value: "branched", label: "Branched 分枝多花" },
+          { value: "spike", label: "Spike 穗状花序" },
+          { value: "cluster", label: "Cluster 聚集式花序" },
+        ]}
+      />
+      {(a.mode === "spike" || a.mode === "cluster") && (
+        <Slider label="Flowers 花朵数量" value={a.flowers} min={3} max={30} step={1} onChange={(flowers) => set({ flowers })} />
+      )}
+      {a.mode === "branched" && <p className="hint">Set the number of branches in 01 Stem → Branching.</p>}
     </>
   );
 }
@@ -106,7 +201,7 @@ export default function Panel() {
         <StemControls />
       </Section>
       <Section num="02" en="Leaves" zh="叶">
-        <p className="hint">Coming in milestone 3.</p>
+        <LeafControls />
       </Section>
       <Section num="03" en="Petals" zh="花瓣" open>
         <PetalControls />
@@ -115,10 +210,10 @@ export default function Panel() {
         <CenterControls />
       </Section>
       <Section num="05" en="Sepals & Buds" zh="萼片与花蕾">
-        <p className="hint">Coming in milestone 3.</p>
+        <SepalControls />
       </Section>
-      <Section num="06" en="Architecture" zh="整体结构">
-        <p className="hint">Coming in milestone 3.</p>
+      <Section num="06" en="Architecture" zh="整体结构" open>
+        <ArchitectureControls />
       </Section>
     </aside>
   );

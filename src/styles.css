@@ -48,9 +48,11 @@ body {
 .ctl input[type="range"] { width: 100%; accent-color: #7fbf8f; }
 .ctl input[type="color"] { width: 100%; height: 24px; padding: 0; border: 1px solid #3a3d44; border-radius: 4px; background: none; }
 
-.choice { grid-column: 1 / -1; display: flex; gap: 4px; }
+.choice { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.choice button { flex: 1 1 0; }
+.choice[data-n="4"] button { flex: 1 1 40%; } /* 4 options → 2×2 grid */
 .choice button, .ghost {
-  flex: 1; padding: 6px 4px; font: inherit; font-size: 12px; color: #c4c6cc; cursor: pointer;
+  padding: 6px 4px; font: inherit; font-size: 12px; color: #c4c6cc; cursor: pointer;
   background: #1d1f24; border: 1px solid #3a3d44; border-radius: 4px;
 }
 .choice button.on { background: #35553f; border-color: #7fbf8f; color: #fff; }

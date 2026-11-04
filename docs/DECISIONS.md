@@ -13,13 +13,19 @@ Template:
 
 ---
 
-## 2026-11-04 — Petals as width-profile grids; merged geometry for small parts
+## 2026-11-04 — Instanced rendering for repeated parts (milestone 3)
 
-**Choice:** Petal (and later leaf/sepal) shapes are a half-width function `w(v)` sampled onto a row×column grid.
-Florets/stamens are merged into one geometry per color instead of using `InstancedMesh`.
-**Why:** A grid can bend smoothly along and across the petal; `ShapeGeometry` only has outline vertices.
-Merging is simpler than instancing and fast enough at ≤400 parts; switch to `InstancedMesh` if the garden
-shows many flowers at once.
+**Choice:** Every repeated part type (petals, sepals, leaves, buds, receptacles, each flower-center part) is drawn
+as one `InstancedMesh`. Florets/stamens inside a center are "stamped" from a unit template into one geometry.
+**Why:** Spike/cluster plants reached ~3,400 separate meshes (one draw call each). Instancing brings that to ~10.
+Stamping made center rebuilds 2–3× faster than creating and merging hundreds of small geometries.
+**Note:** frame rate can't be measured in Claude's preview browser (even a blank page runs at ~2 FPS there), so
+the numbers in ARCHITECTURE.md are build times, not FPS.
+
+## 2026-11-04 — Petals, leaves, sepals as width-profile grids
+
+**Choice:** Blade shapes are a half-width function `w(v)` sampled onto a row×column grid (`src/plant/blade.ts`).
+**Why:** A grid can bend smoothly along and across the blade; `ShapeGeometry` only has outline vertices.
 
 ## 2026-11-04 — Deploy with GitHub Actions, relative base path
 

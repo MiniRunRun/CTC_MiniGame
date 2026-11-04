@@ -13,6 +13,25 @@ Template:
 
 ---
 
+## 2026-11-04 — Milestone 3: leaves, sepals & buds, architecture
+
+**Done:**
+- Leaves: heart / oval / slender / serrated, count, size, alternate / opposite / whorled, angle, color.
+- Sepals & buds: sepal count + shape (pointed/round/narrow), bud shape (round/oval/pointed), bud count, color.
+- Architecture: Single, Branched (uses Stem → Branching 1–6), Spike, Cluster (Flowers 3–30 for the last two).
+- Refactor: shared blade builder (`blade.ts`); `layout.ts` + `assemble.ts` pipeline; instanced rendering in
+  `Plant.tsx`; stamped flower-center parts. Default leaf size 16 cm.
+- Tested in the browser: every mode × every shape/type option, max and zero values, Reset. No console errors.
+  `npm run build` passes.
+
+**Not finished / known issues:**
+- Branches don't fork again, and leaves only grow on the main stem.
+- Leaves start at the stem's center line (their base is hidden inside the stem); fine visually, no petiole.
+- Frame rate untested on a real device (preview browser is throttled). Worth checking on a phone.
+- GitHub Pages source still needs to be set to GitHub Actions by the user. "CTC" meaning still unknown.
+
+**Next:** Milestone 4: drawing pad → outline → `w(v)` profile for petals, leaves and sepals.
+
 ## 2026-11-04 — Milestone 2: stem, petals, center with sliders
 
 **Done:**

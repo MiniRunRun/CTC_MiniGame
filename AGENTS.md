@@ -17,10 +17,10 @@ must be in this repository. If it isn't written here, it doesn't exist.
 |------|------------|
 | `index.html` | Vite entry page; loads `src/main.tsx`. |
 | `src/main.tsx`, `src/App.tsx` | React entry and top-level layout (panel + 3D view). |
-| `src/plant/` | Pure flower logic, no React. `spec.ts` = settings types + defaults; `stem.ts`, `petal.ts`, `center.ts` = settings → three.js geometry. |
+| `src/plant/` | Pure flower logic, no React. Pipeline: `spec.ts` (settings + defaults) → `layout.ts` (where flowers/buds/leaves/branches go, per architecture) → `assemble.ts` (one Matrix4 per copy of each part). Geometry builders: `blade.ts` (shared bendable sheet), `petal.ts`, `leaf.ts`, `sepal.ts` (sepals + buds), `center.ts`, `stem.ts` (curves + tapered tubes). |
 | `src/state/store.ts` | zustand store holding the current `PlantSpec`. Panel writes, scene reads. |
 | `src/ui/` | 2D interface: `Panel.tsx` (sections per part) and `controls.tsx` (Slider, Choice, ColorPicker). |
-| `src/scene/` | 3D: `Viewport.tsx` (camera, lights, ground, controls) and `Plant.tsx` (turns the spec into meshes). |
+| `src/scene/` | 3D: `Viewport.tsx` (camera, lights, ground, controls) and `Plant.tsx` (draws each part type as one `InstancedMesh`). |
 | `src/styles.css` | Global styles. |
 | `assets/` | Images, sounds, fonts. |
 | `vite.config.ts`, `tsconfig.json`, `package.json` | Build setup. |

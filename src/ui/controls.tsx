@@ -39,7 +39,7 @@ export function Choice<T extends string>({ label, value, options, onChange }: Ch
   return (
     <div className="ctl">
       <span className="ctl-label">{label}</span>
-      <div className="choice" role="radiogroup" aria-label={label}>
+      <div className="choice" role="radiogroup" aria-label={label} data-n={options.length}>
         {options.map((o) => (
           <button
             key={o.value}

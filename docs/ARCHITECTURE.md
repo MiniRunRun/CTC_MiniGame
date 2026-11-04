@@ -1,6 +1,6 @@
 # Architecture: Flower Building Tool
 
-How the 3D flower builder works technically. **Status: milestones 1–2 done (see Build order).**
+How the 3D flower builder works technically. **Status: milestones 1–3 done (see Build order).**
 When code is written, keep this file matching the code.
 
 ## Tech stack
@@ -74,11 +74,22 @@ small JSON file, which the garden can reuse later.
   around a taller pistil. Florets/stamens are placed in a sunflower spiral (golden angle 137.5°); density = how many.
   Small repeated parts are merged into one geometry per color (`mergeGeometries`), so 400 parts = a few draw calls.
 - **Buds:** a lathe (`LatheGeometry`) of the bud profile (egg / pointed / round), wrapped in small sepals.
+- **Rendering pipeline (code):** `layoutPlant(spec)` → stem tubes merged into one geometry + placements for
+  flowers/buds/leaves. `assemble(spec, layout)` → one `Matrix4` per petal, sepal, receptacle, flower center, bud, leaf.
+  `Plant.tsx` draws each part type as one `InstancedMesh`, so ~10 draw calls whatever the flower count.
+  Measured (heaviest settings: 30 flowers × 24 petals × 4 layers = 2,880 petals): layout ≤ 10 ms, assemble ≤ 10 ms,
+  flower center rebuild 16–30 ms at density 400.
+- **Leaves:** on the lower main stem (t 0.08–0.6; up to 0.4 for spikes). alternate = 1 per node turning 180°,
+  opposite = 2 per node turning 90°, whorled = 3 per node turning 60°. Upper leaves are smaller. Tips droop slightly.
+- **Sepals:** a ring just below the petals, opening ~25° wider than the outer petals. Buds get a nearly upright ring.
 - **Architecture:**
   - Single: one stem → one flower head.
-  - Branched: stem forks N times (recursive); each tip gets a flower.
+  - Branched: N side branches (Stem → Branching) leave the upper main stem at 40°, curve upward, each ends in a
+    flower; lower branches are longer. Not recursive (branches don't fork again).
   - Spike: flowers spaced along the upper stem, smaller and more closed toward the tip, buds at the top.
-  - Cluster: many short stalks from one point on a dome, each with a small flower.
+  - Cluster: equal stalks fan out from the stem tip up to 75° (sunflower-spiral spacing) → a dome of small flowers.
+  - Buds: single/branched put them on stalks below the main flower, long enough to stick out past its petals;
+    spike puts them at the very top; cluster puts them inside the dome on shorter stalks.
 
 ## Feasibility
 
@@ -96,7 +107,7 @@ small JSON file, which the garden can reuse later.
 
 1. ✅ Vite + React + R3F app with a 3D scene, placeholder plant and empty panel sections; Pages deploy workflow.
 2. ✅ Stem + petals + center driven by the slider panel (zustand store → `src/plant/*` builders → `Plant.tsx`).
-3. Leaves, sepals, buds, and the 4 architecture modes.
+3. ✅ Leaves, sepals, buds, the 4 architecture modes and stem branching; instanced rendering.
 4. Drawing pad → outline → 3D shape.
 5. Polish the slider panel UI (sections, presets, randomize button).
 6. Save/load flower as JSON.

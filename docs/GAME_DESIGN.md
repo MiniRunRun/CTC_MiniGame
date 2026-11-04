@@ -47,6 +47,10 @@ These were not in the user's list. They were added because the 3D needs them; re
   direction; together they are "growth direction"), **Color**.
 - Petals: **Size 大小**, **Color** (fades lighter toward the base). Layers is a 1–4 slider (1 = single, 2+ = multi).
 - A **Reset 重置** button.
+- Milestone 3: **Color** for leaves and sepals/buds; **Flowers 花朵数量** (3–30) for Spike and Cluster.
+  Stem **Branching 分枝数量** (1–6) only has an effect in the Branched architecture.
+- Sepal shapes chosen: pointed 尖形 / round 圆形 / narrow 细长. Bud shapes: round 圆形 / oval 椭圆 / pointed 尖形.
+  (The user listed "sepal shape" and "bud shape" without options; these are our picks.)
 
 ### Free drawing / 自由绘画
 
