@@ -13,6 +13,24 @@ Template:
 
 ---
 
+## 2026-11-04 — Milestone 1: app skeleton
+
+**Done:**
+- Replaced the static placeholder with a Vite + React + TypeScript + React Three Fiber app.
+- Layout: slider panel on the left with the 6 part sections (empty for now), 3D preview on the right
+  (orbit camera, lights, ground, soft shadow). Stacks vertically under 720px wide.
+- `src/scene/PlaceholderPlant.tsx`: a simple stem + 6 petals + center, only to prove 3D works.
+- Added `.github/workflows/deploy.yml` (GitHub Pages via Actions).
+- Checked in the browser: renders, no console errors, desktop and narrow layouts both fine. `npm run build` passes.
+
+**Not finished / known issues:**
+- Pages source must be set to **GitHub Actions** in repo Settings → Pages, or the deploy job fails.
+- Panel sections have no controls yet.
+- "CTC" meaning still unknown.
+
+**Next:** Milestone 2 in `docs/ARCHITECTURE.md`: zustand store + real procedural stem, petals and center driven by sliders.
+Delete `PlaceholderPlant.tsx` when done.
+
 ## 2026-11-04 — Pushed to GitHub
 
 **Done:** The user created `https://github.com/MiniRunRun/CTC_MiniGame` (GitHub username confirmed: `MiniRunRun`)

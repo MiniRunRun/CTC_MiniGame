@@ -1,0 +1,46 @@
+/* Global styles: dark two-column layout (panel | 3D view). Stacks on phones. */
+
+* { box-sizing: border-box; }
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  font-family: system-ui, -apple-system, "PingFang SC", sans-serif;
+  background: #16171b;
+  color: #e6e6e6;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  height: 100%;
+}
+
+.panel {
+  overflow-y: auto;
+  padding: 16px;
+  background: #202227;
+  border-right: 1px solid #2e3036;
+}
+
+.panel h1 { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
+
+.section {
+  border: 1px solid #2e3036;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  background: #26282e;
+}
+
+.section summary { cursor: pointer; padding: 10px 12px; font-size: 14px; }
+.section .num { color: #7fbf8f; font-variant-numeric: tabular-nums; margin-right: 4px; }
+.section .zh { color: #9a9ca3; }
+.section .todo { margin: 0; padding: 0 12px 12px; font-size: 13px; color: #9a9ca3; }
+
+.viewport { min-width: 0; min-height: 0; }
+
+@media (max-width: 720px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: 55vh auto; height: auto; min-height: 100%; }
+  .viewport { order: -1; height: 55vh; }
+  .panel { border-right: none; border-top: 1px solid #2e3036; }
+}

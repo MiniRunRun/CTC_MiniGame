@@ -1,16 +1,19 @@
 # CTC MiniGame
 
-A small browser game, hosted on GitHub Pages.
+A *Digital Garden* browser minigame. First feature: a 3D flower builder. Hosted on GitHub Pages.
 
 **Play:** https://minirunrun.github.io/CTC_MiniGame/
 
 ## Run locally
 
+Needs Node.js 22+.
+
 ```bash
-python3 -m http.server 8000
+npm install
+npm run dev
 ```
 
-Open http://localhost:8000.
+Open http://localhost:5173.
 
 ## For contributors and AI agents
 

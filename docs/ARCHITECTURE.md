@@ -1,6 +1,6 @@
 # Architecture: Flower Building Tool
 
-How the 3D flower builder works technically. **Status: proposed plan, not built yet.**
+How the 3D flower builder works technically. **Status: milestone 1 done (see Build order).**
 When code is written, keep this file matching the code.
 
 ## Tech stack
@@ -92,7 +92,7 @@ small JSON file, which the garden can reuse later.
 
 ## Build order (milestones)
 
-1. Vite + React + R3F app with an empty 3D scene, deployed to GitHub Pages.
+1. ✅ Vite + React + R3F app with a 3D scene, placeholder plant and empty panel sections; Pages deploy workflow.
 2. Stem + petals + center as a **plain slider panel** (no nodes yet) to get the 3D look right.
 3. Leaves, sepals, buds, and the 4 architecture modes.
 4. Drawing pad → outline → 3D shape.
