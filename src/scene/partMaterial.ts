@@ -1,8 +1,8 @@
 // Turns one part's MaterialSpec (natural / pearl / dream / glitch) into three.js materials.
 // Used by Plant.tsx for every part: stem, leaves, petals, center, sepals & buds.
 import * as THREE from "three";
-import type { AnimationSpec, MaterialSpec } from "../plant/spec";
-import { applyAnimation, type AnimKind, type PlantSway } from "./animation";
+import type { AnimationSpec, MaterialPart, MaterialSpec } from "../plant/spec";
+import { applyAnimation, type AnimKind, type PlantMotion } from "./animation";
 import { makeMatcapTexture } from "./matcap";
 import { geometryCenter, makeDreamMaterial } from "./dreamMaterial";
 import { makeGlitchMaterial } from "./glitchMaterial";
@@ -27,8 +27,10 @@ export interface PartAnim {
   spec: AnimationSpec;
   kind: AnimKind;
   size: number;
-  /** The stem's sway to follow (null for the stem itself). */
-  plant: PlantSway | null;
+  part: MaterialPart;
+  /** Whole-plant motion: stem sway (followed unless this is the stem itself) and whole-plant glitch. */
+  plant: PlantMotion;
+  follow: boolean;
 }
 
 export interface PartMaterials {
@@ -44,7 +46,7 @@ export function buildPartMaterials(m: MaterialSpec, o: PartInfo, anim: PartAnim)
   const pm = buildMaterial(m, o);
   for (const mat of [pm.material, pm.halo]) {
     if (!mat) continue;
-    applyAnimation(mat, anim.spec, anim.kind, anim.size, anim.plant);
+    applyAnimation(mat, anim.spec, anim.part, anim.kind, anim.size, anim.plant, anim.follow);
     mat.userData.animSpec = anim.spec; // Plant.tsx reads speed / pattern from here every frame
   }
   return pm;

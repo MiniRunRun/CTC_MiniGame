@@ -1,5 +1,5 @@
 // Animation (动画): motion added on top of ANY material (natural, pearl, dream, glitch).
-// Each part has its own AnimationSpec; every kind of motion is a 0–1 amount, so they can be mixed:
+// Each part picks ONE motion (AnimationSpec.type) that moves only that part, with an amount and speed:
 //   sway    摇摆 → the part bends back and forth from where it's attached (blades flutter from the base,
 //                  the stem bends from the ground)
 //   pulse   呼吸 → the part grows and shrinks a little around where it's attached
@@ -9,11 +9,13 @@
 // How: material.onBeforeCompile injects a few lines into three.js' shader chunks (`#include <common>`,
 // `<begin_vertex>`, `<project_vertex>`), which exist in MeshStandardMaterial, MeshMatcapMaterial and our own
 // ShaderMaterials alike. Each copy (instance) gets its own phase from its position, so petals don't move in sync.
-// Stem sway moves the whole plant: every other part gets the same bend at its height ("plant sway"),
-// so leaves and flowers stay attached to a swaying stem.
+// Two things act on the whole plant (PlantMotion), on top of each part's own motion:
+//   - stem sway: every other part gets the same bend at its height, so leaves/flowers stay attached
+//   - whole-plant glitch 整体故障 (spec.plantAnimation): one set of tearing bands shared by every part, so the
+//     plant tears as one picture. A part's own glitch uses its own random bands (seeded per part).
 // Shadows don't follow the motion (the shadow pass uses three's own depth material).
 import * as THREE from "three";
-import type { AnimationSpec } from "../plant/spec";
+import type { AnimationSpec, PlantAnimationSpec } from "../plant/spec";
 
 /** How the part is shaped, which decides how sway bends it. */
 export type AnimKind = "stem" | "blade" | "blob";
@@ -30,17 +32,23 @@ export interface AnimUniforms {
   uAnPlantTime: { value: number };
   uAnStemSway: { value: number };
   uAnStemLen: { value: number };
+  uAnSeed: { value: number };
+  uAnWTime: { value: number };
+  uAnWGlitch: { value: number };
+  uAnWBand: { value: number };
 }
 
-/** The stem's sway, which every part follows (see top of file). */
-export interface PlantSway {
-  sway: number;
-  speed: number;
+/** What acts on the whole plant (see top of file). */
+export interface PlantMotion {
+  stemSway: number; // the stem's sway amount (0 = none), followed by every non-stem part
+  stemSpeed: number;
   stemLength: number;
+  whole: PlantAnimationSpec; // whole-plant glitch
 }
 
 const HEADER = /* glsl */ `
-uniform float uAnTime, uAnSway, uAnPulse, uAnGlitch, uAnBand, uAnSize, uAnPlantTime, uAnStemSway, uAnStemLen;
+uniform float uAnTime, uAnSway, uAnPulse, uAnGlitch, uAnBand, uAnSize, uAnPlantTime, uAnStemSway, uAnStemLen, uAnSeed;
+uniform float uAnWTime, uAnWGlitch, uAnWBand;
 uniform vec2 uAnRes;
 float anHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
 `;
@@ -91,45 +99,63 @@ const PLANT = /* glsl */ `
 }
 `;
 
-// After <project_vertex> (and PLANT): glitch tearing in screen space.
-const TEAR = /* glsl */ `
+// After <project_vertex> (and PLANT): glitch tearing in screen space. Some horizontal screen bands jump sideways
+// for one time step. The part's own glitch is seeded per part; the whole-plant one is the same for all parts.
+function tear(amount: string, band: string, time: string, seed: string) {
+  return /* glsl */ `
 {
-  float anSt = floor(uAnTime * 10.0);
+  float anSt = floor(${time} * 10.0);
   float anY = (gl_Position.y / gl_Position.w * 0.5 + 0.5) * uAnRes.y;
-  float anB = floor(anY / uAnBand);
-  if (anHash(vec2(anB, anSt)) < uAnGlitch * 0.5) {
-    gl_Position.x += (anHash(vec2(anB + 7.0, anSt)) - 0.5) * uAnGlitch * 0.6 * gl_Position.w;
+  float anB = floor(anY / ${band}) + ${seed} * 101.0;
+  if (anHash(vec2(anB, anSt)) < ${amount} * 0.5) {
+    gl_Position.x += (anHash(vec2(anB + 7.0, anSt)) - 0.5) * ${amount} * 0.6 * gl_Position.w;
   }
 }
 `;
-
-/** True when the spec moves vertices (pattern motion alone doesn't need shader changes). */
-function movesVertices(a: AnimationSpec): boolean {
-  return a.sway > 0 || a.pulse > 0 || a.glitch > 0;
 }
+const TEAR_PART = tear("uAnGlitch", "uAnBand", "uAnTime", "uAnSeed");
+const TEAR_WHOLE = tear("uAnWGlitch", "uAnWBand", "uAnWTime", "0.0");
+
+const SEED = { stem: 1, leaves: 2, petals: 3, center: 4, sepals: 5 } as const;
 
 /**
  * Adds the motion to `material` (if any). `size` = the part's length (blade length, stem length…), so the
- * motion scales with the part. `plant` = the stem's sway, followed by every part except the stem itself.
+ * motion scales with the part. `follow` = this part follows the stem's sway (false for the stem itself).
  * The uniforms go into material.userData.anim; Plant.tsx updates time/resolution.
  */
-export function applyAnimation(material: THREE.Material, a: AnimationSpec, kind: AnimKind, size: number, plant: PlantSway | null) {
-  const follow = !!plant && plant.sway > 0;
-  if (!movesVertices(a) && !follow) return;
-  const dpr = typeof window === "undefined" ? 1 : window.devicePixelRatio || 1;
+export function applyAnimation(
+  material: THREE.Material,
+  a: AnimationSpec,
+  part: keyof typeof SEED,
+  kind: AnimKind,
+  size: number,
+  plant: PlantMotion,
+  follow: boolean,
+) {
+  const amt = (t: AnimationSpec["type"]) => (a.type === t ? a.amount : 0);
+  const sway = amt("sway"), pulse = amt("pulse"), glitch = amt("glitch");
+  const followSway = follow && plant.stemSway > 0;
+  const whole = plant.whole.glitch > 0;
+  if (sway + pulse + glitch === 0 && !followSway && !whole) return;
+  const band = (b: number) => (6 + b * 90) * (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1);
   const u: AnimUniforms = {
     uAnTime: { value: 0 },
-    uAnSway: { value: a.sway },
-    uAnPulse: { value: a.pulse },
-    uAnGlitch: { value: a.glitch },
-    uAnBand: { value: (6 + a.glitchBlock * 90) * dpr },
+    uAnSway: { value: sway },
+    uAnPulse: { value: pulse },
+    uAnGlitch: { value: glitch },
+    uAnBand: { value: band(a.glitchBlock) },
     uAnSize: { value: Math.max(size, 1e-3) },
     uAnRes: { value: new THREE.Vector2(1, 1) },
     uAnPlantTime: { value: 0 },
-    uAnStemSway: { value: follow ? plant!.sway : 0 },
-    uAnStemLen: { value: plant ? Math.max(plant.stemLength, 1e-3) : 1 },
+    uAnStemSway: { value: followSway ? plant.stemSway : 0 },
+    uAnStemLen: { value: Math.max(plant.stemLength, 1e-3) },
+    uAnSeed: { value: SEED[part] },
+    uAnWTime: { value: 0 },
+    uAnWGlitch: { value: plant.whole.glitch },
+    uAnWBand: { value: band(plant.whole.glitchBlock) },
   };
-  material.userData.plantSpeed = plant?.speed ?? 0;
+  material.userData.plantSpeed = plant.stemSpeed;
+  material.userData.wholeSpeed = plant.whole.speed;
   material.userData.anim = u;
   const prev = material.onBeforeCompile.bind(material);
   material.onBeforeCompile = (shader, renderer) => {
@@ -138,9 +164,13 @@ export function applyAnimation(material: THREE.Material, a: AnimationSpec, kind:
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>\n#define ANIM_KIND ${KIND[kind]}\n${HEADER}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${MOVE}`)
-      .replace("#include <project_vertex>", `#include <project_vertex>\n${follow ? PLANT : ""}\n${a.glitch > 0 ? TEAR : ""}`);
+      .replace(
+        "#include <project_vertex>",
+        `#include <project_vertex>\n${followSway ? PLANT : ""}\n${glitch > 0 ? TEAR_PART : ""}\n${whole ? TEAR_WHOLE : ""}`,
+      );
   };
   // Different code per kind / plant sway / glitch on-off → different compiled program.
-  material.customProgramCacheKey = () => `anim-${kind}-${follow ? 1 : 0}-${a.glitch > 0 ? 1 : 0}`;
+  const key = `anim-${kind}-${followSway ? 1 : 0}-${glitch > 0 ? 1 : 0}-${whole ? 1 : 0}`;
+  material.customProgramCacheKey = () => key;
   material.needsUpdate = true;
 }

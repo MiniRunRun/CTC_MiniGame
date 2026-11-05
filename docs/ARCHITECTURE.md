@@ -94,15 +94,19 @@ small JSON file, which the garden can reuse later.
   `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
   (fract(l·levels) near 0/1) in random bands and in random blocks. Random choices use step = floor(uTime·10), so
   with pattern motion they re-roll; with uTime 0 it's a still image. Tearing moved to Animation.
-- **Animation per part (`spec.animations`, `src/scene/animation.ts`):** `{ sway, pulse, glitch, glitchBlock,
-  pattern, speed }` per part (same keys as materials). `buildPartMaterials(m, info, anim)` builds the material, then
+- **Animation per part (`spec.animations`, `src/scene/animation.ts`):** `{ type: none|sway|pulse|glitch|pattern,
+  amount, glitchBlock, speed }` per part (same keys as materials) — one motion per part. Whole-plant glitch is
+  `spec.plantAnimation { glitch, glitchBlock, speed }`, passed to every part as `PlantMotion.whole`; its tearing
+  uses shared bands (seed 0), while a part's own glitch is seeded per part (uAnSeed) so only that part tears.
+  Receptacles use the stem's animation but follow (instead of repeating) its sway.
+  `buildPartMaterials(m, info, anim)` builds the material, then
   `applyAnimation()` adds `onBeforeCompile` code to it — after `#include <begin_vertex>` (sway/pulse in part-local
   space; kind stem = bend by height, blade = flap along local Y by x/len, blob = wobble by distance; per-instance
   phase from instanceMatrix[3]) and after `#include <project_vertex>` (plant sway: every non-stem part adds the
   stem's bend at its plant-space height and re-projects, so it stays attached; then glitch tearing per screen
   band). Works on MeshStandard / MeshMatcap / our ShaderMaterials alike. Uniforms live in
-  `material.userData.anim`; `Plant.tsx` useFrame sets uAnTime = t·speed·2, uAnPlantTime (stem speed), uAnRes, and
-  for ShaderMaterials uTime = t·pattern·speed. No program change when only pattern motion is on. Shadows
+  `material.userData.anim`; `Plant.tsx` useFrame sets uAnTime = t·speed·2, uAnPlantTime (stem speed), uAnWTime
+  (whole-plant speed), uAnRes, and for ShaderMaterials uTime = t·amount·speed when type = pattern (else 0). No program change when only pattern motion is on. Shadows
   don't animate (the depth pass uses three's own material).
 - **Screen effects (`src/scene/Effects.tsx`):** when `effect.mode = "dream"`, an EffectComposer renders the scene
   to a texture, blurs it (separable 9-tap Gaussian, 3 horizontal+vertical rounds, radius ∝ screen height ×

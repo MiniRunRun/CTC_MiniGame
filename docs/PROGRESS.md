@@ -13,6 +13,22 @@ Template:
 
 ---
 
+## 2026-11-05 — One motion per part + whole-plant glitch
+
+**Done:**
+- User correction: each component chooses **its single motion** (they liked a glitch that moves only the stem),
+  and the current all-together glitch must stay.
+- `AnimationSpec` is now `{ type, amount, glitchBlock, speed }`; panel: Motion 动态 choice (None / Sway / Pulse /
+  Glitch / Pattern — Pattern only with Dream/Glitch materials) + Amount + Speed (+ Glitch Bands).
+- A part's own glitch uses per-part random bands, so only that part tears.
+- New section **07 Whole Plant Animation 整体动画** (`spec.plantAnimation`): glitch tearing shared by all parts.
+  Scene → 08, Effect → 09.
+- Tested: stem-only glitch (only the stem tears) with petal sway; whole-plant glitch tears stem + leaves together.
+
+**Not finished / known issues:** same as below (shadows don't animate; Growing State still a placeholder).
+
+---
+
 ## 2026-11-05 — Four categories per part: Form / Material / Animation / Growing State
 
 **Done:**

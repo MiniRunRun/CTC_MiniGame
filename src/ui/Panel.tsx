@@ -358,30 +358,60 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
 }
 
 /**
- * Animation category (动画): motions that work with any material, and can be mixed (0 = off).
- * Pattern motion only does something for materials that have a pattern (Dream, Glitch).
+ * Animation category (动画): the part picks ONE motion, which moves only this part.
+ * Pattern motion is only offered for materials that have a pattern (Dream, Glitch).
  */
 function AnimationControls({ part }: { part: MaterialPart }) {
   const a = usePlant((st) => st.spec.animations[part]);
-  const type = usePlant((st) => st.spec.materials[part].type);
+  const material = usePlant((st) => st.spec.materials[part].type);
   const update = usePlant((st) => st.update);
   const set = (patch: Partial<AnimationSpec>) =>
     update("animations", { [part]: { ...usePlant.getState().spec.animations[part], ...patch } });
-  const hasPattern = type === "dream" || type === "glitch";
+  const hasPattern = material === "dream" || material === "glitch";
+  const type = a.type === "pattern" && !hasPattern ? "none" : a.type;
   return (
     <>
-      <Slider label="Sway 摇摆" value={a.sway} min={0} max={1} step={0.01} format={pct} onChange={(sway) => set({ sway })} />
-      <Slider label="Pulse 呼吸" value={a.pulse} min={0} max={1} step={0.01} format={pct} onChange={(pulse) => set({ pulse })} />
-      <Slider label="Glitch 故障撕裂" value={a.glitch} min={0} max={1} step={0.01} format={pct} onChange={(glitch) => set({ glitch })} />
-      {a.glitch > 0 && (
-        <Slider label="Glitch Bands 撕裂条高度" value={a.glitchBlock} min={0} max={1} step={0.01} format={pct} onChange={(glitchBlock) => set({ glitchBlock })} />
+      <Choice
+        label="Motion 动态"
+        value={type}
+        onChange={(t) => set({ type: t })}
+        options={[
+          { value: "none", label: "None 静止" },
+          { value: "sway", label: "Sway 摇摆" },
+          { value: "pulse", label: "Pulse 呼吸" },
+          { value: "glitch", label: "Glitch 故障" },
+          ...(hasPattern ? [{ value: "pattern" as const, label: "Pattern 图案流动" }] : []),
+        ]}
+      />
+      {part === "stem" && type === "sway" && <p className="hint">The whole plant sways with the stem, so parts stay attached.</p>}
+      {type !== "none" && (
+        <>
+          <Slider label="Amount 强度" value={a.amount} min={0} max={1} step={0.01} format={pct} onChange={(amount) => set({ amount })} />
+          {type === "glitch" && (
+            <Slider label="Glitch Bands 撕裂条高度" value={a.glitchBlock} min={0} max={1} step={0.01} format={pct} onChange={(glitchBlock) => set({ glitchBlock })} />
+          )}
+          <Slider label="Speed 速度" value={a.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
+        </>
       )}
-      {hasPattern ? (
-        <Slider label="Pattern Motion 图案流动" value={a.pattern} min={0} max={1} step={0.01} format={pct} onChange={(pattern) => set({ pattern })} />
-      ) : (
-        <p className="hint">Pattern Motion 图案流动 works with Dream or Glitch materials.</p>
+    </>
+  );
+}
+
+/** Whole-plant animation (整体动画): glitch tearing shared by every part, on top of each part's own motion. */
+function PlantAnimationControls() {
+  const p = usePlant((st) => st.spec.plantAnimation);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<typeof p>) => update("plantAnimation", patch);
+  return (
+    <>
+      <Slider label="Glitch 整体故障" value={p.glitch} min={0} max={1} step={0.01} format={pct} onChange={(glitch) => set({ glitch })} />
+      {p.glitch > 0 && (
+        <>
+          <Slider label="Glitch Bands 撕裂条高度" value={p.glitchBlock} min={0} max={1} step={0.01} format={pct} onChange={(glitchBlock) => set({ glitchBlock })} />
+          <Slider label="Speed 速度" value={p.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
+        </>
       )}
-      <Slider label="Speed 速度" value={a.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
+      <p className="hint">Tears every part together, on top of each part's own Animation.</p>
     </>
   );
 }
@@ -557,10 +587,13 @@ export default function Panel() {
       <Section num="06" en="Architecture" zh="整体结构" open>
         <ArchitectureControls />
       </Section>
-      <Section num="07" en="Scene" zh="场景">
+      <Section num="07" en="Whole Plant Animation" zh="整体动画">
+        <PlantAnimationControls />
+      </Section>
+      <Section num="08" en="Scene" zh="场景">
         <SceneControls />
       </Section>
-      <Section num="08" en="Effect" zh="后期效果" open>
+      <Section num="09" en="Effect" zh="后期效果" open>
         <EffectControls />
       </Section>
     </aside>

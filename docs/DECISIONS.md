@@ -13,6 +13,18 @@ Template:
 
 ---
 
+## 2026-11-05 — One motion per part, plus a whole-plant glitch
+
+**Choice:** Replaced the mixable amount sliders with one `type` per part (+ amount, speed). Per-part glitch bands
+are seeded per part; a separate `spec.plantAnimation.glitch` tears all parts with shared bands. Stem sway still
+carries the other parts (otherwise they float off).
+**Why:** User asked for a single effect per component and liked the glitch moving only the stem, while keeping
+the glitch that moves everything together.
+**Alternatives considered:** keeping mixable sliders (user rejected); a screen-space glitch post effect for
+"whole plant" (would also tear the background — not what was shown).
+
+---
+
 ## 2026-11-05 — Animation is its own per-part category, layered on any material
 
 **Choice:** Each part has `Form / Material / Animation / Growing State`. Animation (`spec.animations[part]`) is a

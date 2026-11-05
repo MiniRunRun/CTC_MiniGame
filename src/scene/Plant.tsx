@@ -97,39 +97,42 @@ export default function Plant() {
   const mats = spec.materials;
   const anims = spec.animations;
   // The stem's sway, which every other part follows so it stays attached (see animation.ts).
+  // Plus the whole-plant glitch (spec.plantAnimation), shared by every part.
+  const stemSway = anims.stem.type === "sway" ? anims.stem.amount : 0;
   const plant = useMemo(
-    () => ({ sway: anims.stem.sway, speed: anims.stem.speed, stemLength: spec.stem.length }),
-    [anims.stem.sway, anims.stem.speed, spec.stem.length],
+    () => ({ stemSway, stemSpeed: anims.stem.speed, stemLength: spec.stem.length, whole: spec.plantAnimation }),
+    [stemSway, anims.stem.speed, spec.stem.length, spec.plantAnimation],
   );
   const petalGeo = fused ?? petal;
   // Length for the dream "length" input: petal length, or for fused flowers the reach from the axis to the petal tips.
   const petalLen = fused ? spec.center.size * 0.35 + spec.petals.stalk + spec.petals.size : spec.petals.size;
   const stemMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7 }, { spec: anims.stem, kind: "stem", size: spec.stem.length, plant: null }),
-    [mats.stem, spec.stem.color, anims.stem, spec.stem.length],
+    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7 }, { spec: anims.stem, part: "stem", kind: "stem", size: spec.stem.length, plant, follow: false }),
+    [mats.stem, spec.stem.color, anims.stem, spec.stem.length, plant],
   );
   const receptacleMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, { spec: { ...anims.stem, sway: 0 }, kind: "blob", size: spec.stem.thickness, plant }),
+    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, // receptacles sit on the stem: they follow its sway instead of swaying on their own
+      { spec: stemSway > 0 ? { ...anims.stem, type: "none" } : anims.stem, part: "stem", kind: "blob", size: spec.stem.thickness, plant, follow: true }),
     [mats.stem, spec.stem.color, receptacle, anims.stem, spec.stem.thickness, plant],
   );
   const leafMat = useMemo(
-    () => buildPartMaterials(mats.leaves, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.leaves.size, haloGeometry: leaf }, { spec: anims.leaves, kind: "blade", size: spec.leaves.size, plant }),
+    () => buildPartMaterials(mats.leaves, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.leaves.size, haloGeometry: leaf }, { spec: anims.leaves, part: "leaves", follow: true, kind: "blade", size: spec.leaves.size, plant }),
     [mats.leaves, spec.leaves.size, leaf, anims.leaves, plant],
   );
   const petalMat = useMemo(
-    () => buildPartMaterials(mats.petals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: petalLen, radial: !!fused, haloGeometry: petalGeo }, { spec: anims.petals, kind: fused ? "blob" : "blade", size: petalLen, plant }),
+    () => buildPartMaterials(mats.petals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: petalLen, radial: !!fused, haloGeometry: petalGeo }, { spec: anims.petals, part: "petals", follow: true, kind: fused ? "blob" : "blade", size: petalLen, plant }),
     [mats.petals, petalLen, fused, petalGeo, anims.petals, plant],
   );
   const sepalMat = useMemo(
-    () => buildPartMaterials(mats.sepals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.petals.size * 0.45, haloGeometry: sepal }, { spec: anims.sepals, kind: "blade", size: spec.petals.size * 0.45, plant }),
+    () => buildPartMaterials(mats.sepals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.petals.size * 0.45, haloGeometry: sepal }, { spec: anims.sepals, part: "sepals", follow: true, kind: "blade", size: spec.petals.size * 0.45, plant }),
     [mats.sepals, spec.petals.size, sepal, anims.sepals, plant],
   );
   const budMat = useMemo(
-    () => buildPartMaterials(mats.sepals, { vertexColors: true, roughness: 0.6, haloGeometry: bud }, { spec: anims.sepals, kind: "blob", size: spec.petals.size * 0.6, plant }),
+    () => buildPartMaterials(mats.sepals, { vertexColors: true, roughness: 0.6, haloGeometry: bud }, { spec: anims.sepals, part: "sepals", follow: true, kind: "blob", size: spec.petals.size * 0.6, plant }),
     [mats.sepals, bud, anims.sepals, spec.petals.size, plant],
   );
   const centerMats = useMemo(
-    () => center.map((c) => buildPartMaterials(mats.center, { color: c.color, roughness: 0.8, haloGeometry: c.geometry }, { spec: anims.center, kind: "blob", size: Math.max(spec.center.size, spec.center.height), plant })),
+    () => center.map((c) => buildPartMaterials(mats.center, { color: c.color, roughness: 0.8, haloGeometry: c.geometry }, { spec: anims.center, part: "center", follow: true, kind: "blob", size: Math.max(spec.center.size, spec.center.height), plant })),
     [center, mats.center, anims.center, spec.center.size, spec.center.height, plant],
   );
   const allMats = [stemMat, receptacleMat, leafMat, petalMat, sepalMat, budMat, ...centerMats];
@@ -162,10 +165,11 @@ export default function Plant() {
         if (anim) {
           anim.uAnTime.value = t * a.speed * 2;
           anim.uAnPlantTime.value = t * m.userData.plantSpeed * 2;
+          anim.uAnWTime.value = t * m.userData.wholeSpeed * 2;
           anim.uAnRes.value.copy(bufferSize);
         }
         // Pattern motion: Dream bands flow, Glitch blocks/grain re-roll. 0 = still image.
-        if (m instanceof THREE.ShaderMaterial && m.uniforms.uTime) m.uniforms.uTime.value = t * a.pattern * a.speed;
+        if (m instanceof THREE.ShaderMaterial && m.uniforms.uTime) m.uniforms.uTime.value = a.type === "pattern" ? t * a.amount * a.speed : 0;
       }
     }
   });

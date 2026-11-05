@@ -63,14 +63,16 @@ These were not in the user's list. They were added because the 3D needs them; re
   - Glitch: broken-video look from the user's glitch reference image — flat grey levels, vertical stripes,
     neon green/cyan accents in bands and blocks, grain (Dark/Mid/Light, Accent 1/2, Levels, Stripes,
     Stripe Width, Block Height, Accents, Grain). Looks closest to the reference with
-    07 Scene background ≈ #a4a4a4 and Ground hidden.
-- **Animation 动画** (works with every material; each motion is a 0–100% amount, so they mix):
-  Sway 摇摆 (bends from where the part attaches; the stem's sway moves the whole plant so parts stay attached),
-  Pulse 呼吸 (grows/shrinks; on the stem a bulge travels up), Glitch 故障撕裂 (screen bands jump sideways, with
-  Glitch Bands height), Pattern Motion 图案流动 (Dream bands flow / Glitch blocks re-roll; Dream & Glitch only),
-  Speed 速度. Everything is still by default.
-- **07 Scene 场景**: Background color, Ground show/hide.
-- **08 Effect 后期效果**: None / **Dream 梦境** — blur + 5-color gradient map (Blur, Contrast, Offset, Repeat,
+    08 Scene background ≈ #a4a4a4 and Ground hidden.
+- **Animation 动画** (works with every material): each part picks **one** Motion 动态 that moves only that part
+  (user request) — None 静止 / Sway 摇摆 (bends from where the part attaches; the stem's sway moves the whole plant
+  so parts stay attached) / Pulse 呼吸 (grows/shrinks; on the stem a bulge travels up) / Glitch 故障 (this part's
+  own screen bands jump sideways, + Glitch Bands height) / Pattern 图案流动 (Dream bands flow / Glitch blocks
+  re-roll; only offered for Dream & Glitch materials). Then Amount 强度 and Speed 速度. Still by default.
+- **07 Whole Plant Animation 整体动画**: Glitch 整体故障 tears every part together along shared bands (Bands
+  height, Speed), on top of each part's own motion.
+- **08 Scene 场景**: Background color, Ground show/hide.
+- **09 Effect 后期效果**: None / **Dream 梦境** — blur + 5-color gradient map (Blur, Contrast, Offset, Repeat,
   Fringe, Grain). From the user's blurred, pink-haloed reference image.
 - A **Reset 重置** button.
 - Milestone 3: **Color** for leaves and sepals/buds; **Flowers 花朵数量** (3–30) for Spike and Cluster.

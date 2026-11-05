@@ -155,16 +155,23 @@ export interface MaterialSpec {
 }
 
 /**
- * Animation per part (动画). Every motion is an amount 0 – 1 (0 = off), so motions can be mixed.
- * Works with every material (see scene/animation.ts).
+ * Animation per part (动画). Each part picks ONE motion; it moves only that part (see scene/animation.ts).
+ * Works with every material.
  */
+export type AnimationType = "none" | "sway" | "pulse" | "glitch" | "pattern";
+
 export interface AnimationSpec {
-  sway: number; // 摇摆: bends back and forth from where the part is attached
-  pulse: number; // 呼吸: grows and shrinks a little
-  glitch: number; // 故障: horizontal screen bands jump sideways (tearing)
-  glitchBlock: number; // 0 – 1, height of the tearing bands
-  pattern: number; // 图案流动: the material's pattern moves (Dream bands, Glitch blocks & grain)
-  speed: number; // 0 – 1, speed of all of the above
+  type: AnimationType; // none / 摇摆 sway / 呼吸 pulse / 故障 glitch tearing / 图案流动 pattern (Dream, Glitch only)
+  amount: number; // 0 – 1, how strong
+  glitchBlock: number; // 0 – 1, height of the tearing bands (glitch only)
+  speed: number; // 0 – 1
+}
+
+/** Whole-plant animation (整体动画): glitch tearing shared by every part, so the plant tears as one picture. */
+export interface PlantAnimationSpec {
+  glitch: number; // 0 – 1 (0 = off)
+  glitchBlock: number; // 0 – 1, band height
+  speed: number; // 0 – 1
 }
 
 /** Which part a material belongs to. Sepals & buds share one; the stem's material is also used for receptacles. */
@@ -199,6 +206,7 @@ export interface PlantSpec {
   architecture: ArchitectureSpec;
   materials: Record<MaterialPart, MaterialSpec>;
   animations: Record<MaterialPart, AnimationSpec>; // same parts as materials
+  plantAnimation: PlantAnimationSpec;
   scene: SceneSpec;
   effect: EffectSpec;
 }
@@ -250,7 +258,7 @@ function material(halo: number): MaterialSpec {
 
 /** Default animation: everything still. */
 function animation(): AnimationSpec {
-  return { sway: 0, pulse: 0, glitch: 0, glitchBlock: 0.4, pattern: 0, speed: 0.5 };
+  return { type: "none", amount: 0.5, glitchBlock: 0.4, speed: 0.5 };
 }
 
 export const DEFAULT_SPEC: PlantSpec = {
@@ -333,6 +341,7 @@ export const DEFAULT_SPEC: PlantSpec = {
     center: animation(),
     sepals: animation(),
   },
+  plantAnimation: { glitch: 0, glitchBlock: 0.4, speed: 0.5 },
   scene: {
     background: "#1d1f24",
     ground: true,
