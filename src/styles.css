@@ -83,4 +83,8 @@ body {
 .ramp-preview { height: 14px; border-radius: 4px; border: 1px solid #3a3d44; }
 
 /* Material block at the bottom of each part section */
-.material { display: grid; gap: inherit; border-top: 1px solid #3a3d44; padding-top: 10px; margin-top: 4px; }
+/* Categories inside a part section: Form / Material / Animation / Growing State */
+.category { border-top: 1px solid #3a3d44; }
+.category summary { cursor: pointer; padding: 8px 0; font-size: 13px; color: #cfd1d6; }
+.category .zh { color: #9a9ca3; }
+.category-body { display: grid; gap: 10px; padding-bottom: 8px; }

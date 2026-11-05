@@ -87,14 +87,23 @@ small JSON file, which the garden can reuse later.
   (`beginnormal/defaultnormal/begin/project_vertex`, so InstancedMesh works). t = 1−|n·v| (facing), x/len
   (length; radial for fused) or 3D value noise; + flow noise moving with time×speed; ping-pong repeat; r/g/b
   sampled at t±fringe. Edge Fade → alpha (transparent, no depth write). Halo: same geometry/matrices, vertices
-  scaled around the geometry's bbox center by 1+halo, alpha = facing²×opacity, renderOrder 2. `Plant.tsx` updates
-  `uTime` each frame (× that part's speed, kept in `material.userData.speed`).
+  scaled around the geometry's bbox center by 1+halo, alpha = facing²×opacity, renderOrder 2. `uTime` (pattern
+  motion) comes from the part's animation, see below.
 - **Glitch material (`src/scene/glitchMaterial.ts`):** ShaderMaterial, same chunks. Light = fixed view-space
   direction + facing, + grain, posterized to `levels` greys. Screen-space (gl_FragCoord) pieces: bands of
   `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
-  (fract(l·levels) near 0/1) in random bands and in random blocks. Tearing is in the vertex shader: per screen band
-  and per time step (floor(uTime·10)), some bands shift gl_Position.x — so the geometry itself tears/smears.
-  Needs `uRes` (drawing-buffer size), which `Plant.tsx` sets every frame.
+  (fract(l·levels) near 0/1) in random bands and in random blocks. Random choices use step = floor(uTime·10), so
+  with pattern motion they re-roll; with uTime 0 it's a still image. Tearing moved to Animation.
+- **Animation per part (`spec.animations`, `src/scene/animation.ts`):** `{ sway, pulse, glitch, glitchBlock,
+  pattern, speed }` per part (same keys as materials). `buildPartMaterials(m, info, anim)` builds the material, then
+  `applyAnimation()` adds `onBeforeCompile` code to it — after `#include <begin_vertex>` (sway/pulse in part-local
+  space; kind stem = bend by height, blade = flap along local Y by x/len, blob = wobble by distance; per-instance
+  phase from instanceMatrix[3]) and after `#include <project_vertex>` (plant sway: every non-stem part adds the
+  stem's bend at its plant-space height and re-projects, so it stays attached; then glitch tearing per screen
+  band). Works on MeshStandard / MeshMatcap / our ShaderMaterials alike. Uniforms live in
+  `material.userData.anim`; `Plant.tsx` useFrame sets uAnTime = t·speed·2, uAnPlantTime (stem speed), uAnRes, and
+  for ShaderMaterials uTime = t·pattern·speed. No program change when only pattern motion is on. Shadows
+  don't animate (the depth pass uses three's own material).
 - **Screen effects (`src/scene/Effects.tsx`):** when `effect.mode = "dream"`, an EffectComposer renders the scene
   to a texture, blurs it (separable 9-tap Gaussian, 3 horizontal+vertical rounds, radius ∝ screen height ×
   `blur`), then maps perceptual brightness through `contrast`/`offset`/`repeat` onto the 5 `ramp` colors

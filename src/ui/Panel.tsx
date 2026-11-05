@@ -8,7 +8,7 @@ import { petalWidth } from "../plant/petal";
 import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
-import type { DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
+import type { AnimationSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -20,6 +20,49 @@ function Section(props: { num: string; en: string; zh: string; open?: boolean; c
       </summary>
       <div className="section-body">{props.children}</div>
     </details>
+  );
+}
+
+/**
+ * One category inside a part section. Every part has the same four:
+ * Form 形态 (shape, size, count, color) · Material 材质 · Animation 动画 · Growing State 生长状态.
+ */
+function Category(props: { en: string; zh: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="category" open={props.open}>
+      <summary>
+        {props.en} <span className="zh">{props.zh}</span>
+      </summary>
+      <div className="category-body">{props.children}</div>
+    </details>
+  );
+}
+
+/** A flower-part section with its four categories. */
+function PartSection(props: {
+  num: string;
+  en: string;
+  zh: string;
+  open?: boolean;
+  part: MaterialPart;
+  hasLength?: boolean;
+  form: ReactNode;
+}) {
+  return (
+    <Section num={props.num} en={props.en} zh={props.zh} open={props.open}>
+      <Category en="Form" zh="形态" open>
+        {props.form}
+      </Category>
+      <Category en="Material" zh="材质">
+        <MaterialControls part={props.part} hasLength={props.hasLength} />
+      </Category>
+      <Category en="Animation" zh="动画">
+        <AnimationControls part={props.part} />
+      </Category>
+      <Category en="Growing State" zh="生长状态">
+        <p className="hint">Coming later 之后再设计.</p>
+      </Category>
+    </Section>
   );
 }
 
@@ -282,7 +325,7 @@ function CenterControls() {
 }
 
 /**
- * Material block (材质), shown at the bottom of every part section.
+ * Material category (材质) of every part section. Materials are still images; motion is in Animation.
  * Natural / Pearl 珍珠 / Dream 梦境 / Glitch 故障, each with its own settings, stored in spec.materials[part].
  */
 function MaterialControls({ part, hasLength = false }: { part: MaterialPart; hasLength?: boolean }) {
@@ -295,9 +338,9 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
   const setDream = (patch: Partial<DreamSpec>) => update("materials", { [part]: { ...latest(), dream: { ...latest().dream, ...patch } } });
   const setGlitch = (patch: Partial<GlitchSpec>) => update("materials", { [part]: { ...latest(), glitch: { ...latest().glitch, ...patch } } });
   return (
-    <div className="material">
+    <>
       <Choice
-        label="Material 材质"
+        label="Type 类型"
         value={m.type}
         onChange={setType}
         options={[
@@ -310,7 +353,36 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
       {m.type === "pearl" && <PearlControls p={m.pearl} set={setPearl} />}
       {m.type === "dream" && <DreamControls d={m.dream} set={setDream} hasLength={hasLength} halo={part !== "stem"} />}
       {m.type === "glitch" && <GlitchControls g={m.glitch} set={setGlitch} />}
-    </div>
+    </>
+  );
+}
+
+/**
+ * Animation category (动画): motions that work with any material, and can be mixed (0 = off).
+ * Pattern motion only does something for materials that have a pattern (Dream, Glitch).
+ */
+function AnimationControls({ part }: { part: MaterialPart }) {
+  const a = usePlant((st) => st.spec.animations[part]);
+  const type = usePlant((st) => st.spec.materials[part].type);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<AnimationSpec>) =>
+    update("animations", { [part]: { ...usePlant.getState().spec.animations[part], ...patch } });
+  const hasPattern = type === "dream" || type === "glitch";
+  return (
+    <>
+      <Slider label="Sway 摇摆" value={a.sway} min={0} max={1} step={0.01} format={pct} onChange={(sway) => set({ sway })} />
+      <Slider label="Pulse 呼吸" value={a.pulse} min={0} max={1} step={0.01} format={pct} onChange={(pulse) => set({ pulse })} />
+      <Slider label="Glitch 故障撕裂" value={a.glitch} min={0} max={1} step={0.01} format={pct} onChange={(glitch) => set({ glitch })} />
+      {a.glitch > 0 && (
+        <Slider label="Glitch Bands 撕裂条高度" value={a.glitchBlock} min={0} max={1} step={0.01} format={pct} onChange={(glitchBlock) => set({ glitchBlock })} />
+      )}
+      {hasPattern ? (
+        <Slider label="Pattern Motion 图案流动" value={a.pattern} min={0} max={1} step={0.01} format={pct} onChange={(pattern) => set({ pattern })} />
+      ) : (
+        <p className="hint">Pattern Motion 图案流动 works with Dream or Glitch materials.</p>
+      )}
+      <Slider label="Speed 速度" value={a.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
+    </>
   );
 }
 
@@ -375,7 +447,6 @@ function DreamControls({ d, set, hasLength, halo }: {
       <Slider label="Repeat 色带重复" value={d.repeat} min={1} max={4} step={0.1} format={(v) => v.toFixed(1)} onChange={(repeat) => set({ repeat })} />
       <Slider label="Fringe 色散" value={d.fringe} min={0} max={1} step={0.01} format={pct} onChange={(fringe) => set({ fringe })} />
       <Slider label="Flow 流动" value={d.flow} min={0} max={1} step={0.01} format={pct} onChange={(flow) => set({ flow })} />
-      <Slider label="Speed 速度" value={d.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
       <Slider label="Edge Fade 边缘淡出" value={d.edge} min={0} max={1} step={0.01} format={pct} onChange={(edge) => set({ edge })} />
       {halo && (
         <Slider label="Halo 光晕大小" value={d.halo} min={0} max={0.6} step={0.01} format={pct} onChange={(h) => set({ halo: h })} />
@@ -390,7 +461,7 @@ function DreamControls({ d, set, hasLength, halo }: {
   );
 }
 
-/** Glitch material: grey levels, stripes, band tearing, neon accents, grain. */
+/** Glitch material (still image): grey levels, stripes, neon accents, grain. Tearing is in Animation. */
 function GlitchControls({ g, set }: { g: GlitchSpec; set: (patch: Partial<GlitchSpec>) => void }) {
   return (
     <>
@@ -407,10 +478,8 @@ function GlitchControls({ g, set }: { g: GlitchSpec; set: (patch: Partial<Glitch
       <Slider label="Stripes 竖条纹" value={g.stripes} min={0} max={1} step={0.01} format={pct} onChange={(stripes) => set({ stripes })} />
       <Slider label="Stripe Width 条纹宽度" value={g.stripeWidth} min={2} max={12} step={0.5} format={(v) => `${v}px`} onChange={(stripeWidth) => set({ stripeWidth })} />
       <Slider label="Block Height 色块高度" value={g.block} min={0} max={1} step={0.01} format={pct} onChange={(block) => set({ block })} />
-      <Slider label="Tear 撕裂错位" value={g.tear} min={0} max={1} step={0.01} format={pct} onChange={(tear) => set({ tear })} />
       <Slider label="Accents 强调色量" value={g.accents} min={0} max={1} step={0.01} format={pct} onChange={(accents) => set({ accents })} />
       <Slider label="Grain 颗粒" value={g.grain} min={0} max={1} step={0.01} format={pct} onChange={(grain) => set({ grain })} />
-      <Slider label="Speed 跳动速度" value={g.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
     </>
   );
 }
@@ -480,26 +549,11 @@ export default function Panel() {
         <h1>Flower Builder</h1>
         <button type="button" className="ghost" onClick={reset}>Reset 重置</button>
       </div>
-      <Section num="01" en="Stem" zh="茎" open>
-        <StemControls />
-        <MaterialControls part="stem" />
-      </Section>
-      <Section num="02" en="Leaves" zh="叶">
-        <LeafControls />
-        <MaterialControls part="leaves" hasLength />
-      </Section>
-      <Section num="03" en="Petals" zh="花瓣" open>
-        <PetalControls />
-        <MaterialControls part="petals" hasLength />
-      </Section>
-      <Section num="04" en="Flower Center" zh="花心" open>
-        <CenterControls />
-        <MaterialControls part="center" />
-      </Section>
-      <Section num="05" en="Sepals & Buds" zh="萼片与花蕾">
-        <SepalControls />
-        <MaterialControls part="sepals" hasLength />
-      </Section>
+      <PartSection num="01" en="Stem" zh="茎" open part="stem" form={<StemControls />} />
+      <PartSection num="02" en="Leaves" zh="叶" part="leaves" hasLength form={<LeafControls />} />
+      <PartSection num="03" en="Petals" zh="花瓣" open part="petals" hasLength form={<PetalControls />} />
+      <PartSection num="04" en="Flower Center" zh="花心" open part="center" form={<CenterControls />} />
+      <PartSection num="05" en="Sepals & Buds" zh="萼片与花蕾" part="sepals" hasLength form={<SepalControls />} />
       <Section num="06" en="Architecture" zh="整体结构" open>
         <ArchitectureControls />
       </Section>

@@ -2,22 +2,19 @@
 // Built from the parts of the user's reference image (a grey glitch frame with green/cyan accents):
 //   1. grey levels   → light is posterized into a few flat greys (dark / mid / light)
 //   2. stripes       → thin vertical lines in screen pixels, on bright areas and on random bands
-//   3. block tearing → the screen is cut into horizontal bands; some bands slide sideways
-//                      (done on the vertices, so the part itself tears and smears)
+//   3. bands         → the screen is cut into horizontal bands; some get stripes or accents
 //   4. accents       → neon green / cyan on the edges between grey levels and in random blocks
 //   5. grain         → fine noise
-// The tearing and blocks jump in steps (like a bad signal), not smoothly.
+// The material is a still image. Tearing and the jumping of blocks/grain are in Animation (scene/animation.ts,
+// and "pattern" motion drives uTime from Plant.tsx).
 // Works with InstancedMesh for the same reason as dreamMaterial.ts (three.js chunks handle instanceMatrix).
 import * as THREE from "three";
 import type { GlitchSpec } from "../plant/spec";
 
 const vertexShader = /* glsl */ `
 #include <common>
-uniform float uTime, uBandPx, uTear, uAmount;
-uniform vec2 uRes;
 varying vec3 vNormalV;
 varying vec3 vViewPos;
-float h21(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
 void main() {
   #include <beginnormal_vertex>
   #include <defaultnormal_vertex>
@@ -25,18 +22,11 @@ void main() {
   #include <project_vertex>
   vNormalV = normalize(transformedNormal);
   vViewPos = -mvPosition.xyz;
-  // Block tearing: which screen band is this vertex in? Some bands slide sideways this time step.
-  float step_ = floor(uTime * 10.0);
-  float ypx = (gl_Position.y / gl_Position.w * 0.5 + 0.5) * uRes.y;
-  float band = floor(ypx / uBandPx);
-  if (h21(vec2(band, step_)) < uAmount * 0.5) {
-    gl_Position.x += (h21(vec2(band + 7.0, step_)) - 0.5) * uTear * 0.6 * gl_Position.w;
-  }
 }`;
 
 const fragmentShader = /* glsl */ `
 uniform vec3 uDark, uMid, uLight, uAccent, uAccent2;
-uniform float uLevels, uStripes, uStripePx, uAccents, uGrain, uTime, uBandPx, uAmount;
+uniform float uLevels, uStripes, uStripePx, uAccents, uGrain, uTime, uBandPx;
 varying vec3 vNormalV;
 varying vec3 vViewPos;
 float h21(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
@@ -99,12 +89,8 @@ export function makeGlitchMaterial(g: GlitchSpec, doubleSide = false): THREE.Sha
       uAccents: { value: g.accents },
       uGrain: { value: g.grain },
       uBandPx: { value: (6 + g.block * 90) * dpr },
-      uTear: { value: g.tear },
-      uAmount: { value: g.tear > 0 ? 1 : 0 },
-      uTime: { value: 0 },
-      uRes: { value: new THREE.Vector2(1, 1) }, // drawing-buffer size, set every frame by Plant.tsx
+      uTime: { value: 0 }, // pattern motion (Animation → Pattern), set by Plant.tsx
     },
   });
-  material.userData.speed = g.speed;
   return material;
 }

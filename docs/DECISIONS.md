@@ -13,6 +13,20 @@ Template:
 
 ---
 
+## 2026-11-05 — Animation is its own per-part category, layered on any material
+
+**Choice:** Each part has `Form / Material / Animation / Growing State`. Animation (`spec.animations[part]`) is a
+set of mixable 0–1 amounts (sway, pulse, glitch, pattern) + speed, injected into whatever material the part uses
+via `onBeforeCompile`. Materials became still images (their time input is driven by Animation → Pattern Motion).
+Stem sway is applied to all parts by plant-space height.
+**Why:** User asked to separate motion from material and to offer more than glitch. Injecting into three's shared
+chunks means one animation system works for natural, pearl, dream and glitch. Amount sliders (instead of one
+choice) let motions combine. Without the plant-wide stem sway, a swaying stem leaves its leaves floating.
+**Alternatives considered:** one animation choice per part (simpler, but can't mix); animating instance
+matrices on the CPU (costs per frame, can't do screen-space tearing).
+
+---
+
 ## 2026-11-04 — Glitch is a per-part material, with screen-space patterns
 
 **Choice:** Glitch is a 4th `MaterialType` (not a screen effect). Stripes, bands and blocks are computed from

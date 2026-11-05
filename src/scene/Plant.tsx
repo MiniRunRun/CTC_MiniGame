@@ -15,6 +15,8 @@ import { buildLeafGeometry } from "../plant/leaf";
 import { buildBudGeometry, buildSepalGeometry } from "../plant/sepal";
 import { buildFusedFlower } from "../plant/fused";
 import { buildPartMaterials, type PartMaterials } from "./partMaterial";
+import type { AnimUniforms } from "./animation";
+import type { AnimationSpec } from "../plant/spec";
 
 /** Free GPU memory for geometries/materials we no longer show. */
 function useDisposeOnChange(items: { dispose: () => void }[]) {
@@ -93,36 +95,42 @@ export default function Plant() {
   // Materials: each part has its own (natural / pearl / dream), see partMaterial.ts.
   // Rebuilt only when that part's material settings (or the few inputs it uses) change.
   const mats = spec.materials;
+  const anims = spec.animations;
+  // The stem's sway, which every other part follows so it stays attached (see animation.ts).
+  const plant = useMemo(
+    () => ({ sway: anims.stem.sway, speed: anims.stem.speed, stemLength: spec.stem.length }),
+    [anims.stem.sway, anims.stem.speed, spec.stem.length],
+  );
   const petalGeo = fused ?? petal;
   // Length for the dream "length" input: petal length, or for fused flowers the reach from the axis to the petal tips.
   const petalLen = fused ? spec.center.size * 0.35 + spec.petals.stalk + spec.petals.size : spec.petals.size;
   const stemMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7 }),
-    [mats.stem, spec.stem.color],
+    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7 }, { spec: anims.stem, kind: "stem", size: spec.stem.length, plant: null }),
+    [mats.stem, spec.stem.color, anims.stem, spec.stem.length],
   );
   const receptacleMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }),
-    [mats.stem, spec.stem.color, receptacle],
+    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, { spec: { ...anims.stem, sway: 0 }, kind: "blob", size: spec.stem.thickness, plant }),
+    [mats.stem, spec.stem.color, receptacle, anims.stem, spec.stem.thickness, plant],
   );
   const leafMat = useMemo(
-    () => buildPartMaterials(mats.leaves, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.leaves.size, haloGeometry: leaf }),
-    [mats.leaves, spec.leaves.size, leaf],
+    () => buildPartMaterials(mats.leaves, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.leaves.size, haloGeometry: leaf }, { spec: anims.leaves, kind: "blade", size: spec.leaves.size, plant }),
+    [mats.leaves, spec.leaves.size, leaf, anims.leaves, plant],
   );
   const petalMat = useMemo(
-    () => buildPartMaterials(mats.petals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: petalLen, radial: !!fused, haloGeometry: petalGeo }),
-    [mats.petals, petalLen, fused, petalGeo],
+    () => buildPartMaterials(mats.petals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: petalLen, radial: !!fused, haloGeometry: petalGeo }, { spec: anims.petals, kind: fused ? "blob" : "blade", size: petalLen, plant }),
+    [mats.petals, petalLen, fused, petalGeo, anims.petals, plant],
   );
   const sepalMat = useMemo(
-    () => buildPartMaterials(mats.sepals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.petals.size * 0.45, haloGeometry: sepal }),
-    [mats.sepals, spec.petals.size, sepal],
+    () => buildPartMaterials(mats.sepals, { vertexColors: true, doubleSide: true, roughness: 0.55, axisLen: spec.petals.size * 0.45, haloGeometry: sepal }, { spec: anims.sepals, kind: "blade", size: spec.petals.size * 0.45, plant }),
+    [mats.sepals, spec.petals.size, sepal, anims.sepals, plant],
   );
   const budMat = useMemo(
-    () => buildPartMaterials(mats.sepals, { vertexColors: true, roughness: 0.6, haloGeometry: bud }),
-    [mats.sepals, bud],
+    () => buildPartMaterials(mats.sepals, { vertexColors: true, roughness: 0.6, haloGeometry: bud }, { spec: anims.sepals, kind: "blob", size: spec.petals.size * 0.6, plant }),
+    [mats.sepals, bud, anims.sepals, spec.petals.size, plant],
   );
   const centerMats = useMemo(
-    () => center.map((c) => buildPartMaterials(mats.center, { color: c.color, roughness: 0.8, haloGeometry: c.geometry })),
-    [center, mats.center],
+    () => center.map((c) => buildPartMaterials(mats.center, { color: c.color, roughness: 0.8, haloGeometry: c.geometry }, { spec: anims.center, kind: "blob", size: Math.max(spec.center.size, spec.center.height), plant })),
+    [center, mats.center, anims.center, spec.center.size, spec.center.height, plant],
   );
   const allMats = [stemMat, receptacleMat, leafMat, petalMat, sepalMat, budMat, ...centerMats];
 
@@ -142,14 +150,22 @@ export default function Plant() {
   useDisposeOnChange(budMat.disposables);
   useDisposeOnChange(useMemo(() => centerMats.flatMap((m) => m.disposables), [centerMats]));
 
-  // Dream / glitch materials: animate each at its own part's speed. Glitch also needs the screen size in pixels.
+  // Animation clocks, per part (see animation.ts): motion time, and the material's own pattern time.
   useFrame((state) => {
     state.gl.getDrawingBufferSize(bufferSize);
+    const t = state.clock.elapsedTime;
     for (const pm of allMats) {
       for (const m of [pm.material, pm.halo]) {
-        if (!(m instanceof THREE.ShaderMaterial)) continue;
-        m.uniforms.uTime.value = state.clock.elapsedTime * m.userData.speed;
-        m.uniforms.uRes?.value.copy(bufferSize);
+        if (!m) continue;
+        const a = m.userData.animSpec as AnimationSpec;
+        const anim = m.userData.anim as AnimUniforms | undefined;
+        if (anim) {
+          anim.uAnTime.value = t * a.speed * 2;
+          anim.uAnPlantTime.value = t * m.userData.plantSpeed * 2;
+          anim.uAnRes.value.copy(bufferSize);
+        }
+        // Pattern motion: Dream bands flow, Glitch blocks/grain re-roll. 0 = still image.
+        if (m instanceof THREE.ShaderMaterial && m.uniforms.uTime) m.uniforms.uTime.value = t * a.pattern * a.speed;
       }
     }
   });

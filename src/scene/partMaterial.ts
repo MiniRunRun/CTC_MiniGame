@@ -1,7 +1,8 @@
 // Turns one part's MaterialSpec (natural / pearl / dream / glitch) into three.js materials.
 // Used by Plant.tsx for every part: stem, leaves, petals, center, sepals & buds.
 import * as THREE from "three";
-import type { MaterialSpec } from "../plant/spec";
+import type { AnimationSpec, MaterialSpec } from "../plant/spec";
+import { applyAnimation, type AnimKind, type PlantSway } from "./animation";
 import { makeMatcapTexture } from "./matcap";
 import { geometryCenter, makeDreamMaterial } from "./dreamMaterial";
 import { makeGlitchMaterial } from "./glitchMaterial";
@@ -21,6 +22,15 @@ export interface PartInfo {
   haloGeometry?: THREE.BufferGeometry;
 }
 
+/** The part's animation (see animation.ts): settings, how the part bends, and its length. */
+export interface PartAnim {
+  spec: AnimationSpec;
+  kind: AnimKind;
+  size: number;
+  /** The stem's sway to follow (null for the stem itself). */
+  plant: PlantSway | null;
+}
+
 export interface PartMaterials {
   material: THREE.Material;
   /** Dream halo shell material, drawn as a second copy of the part (null when off). */
@@ -29,7 +39,18 @@ export interface PartMaterials {
   disposables: { dispose: () => void }[];
 }
 
-export function buildPartMaterials(m: MaterialSpec, o: PartInfo): PartMaterials {
+/** Material + animation for one part. Animation is added on top of whatever material was picked. */
+export function buildPartMaterials(m: MaterialSpec, o: PartInfo, anim: PartAnim): PartMaterials {
+  const pm = buildMaterial(m, o);
+  for (const mat of [pm.material, pm.halo]) {
+    if (!mat) continue;
+    applyAnimation(mat, anim.spec, anim.kind, anim.size, anim.plant);
+    mat.userData.animSpec = anim.spec; // Plant.tsx reads speed / pattern from here every frame
+  }
+  return pm;
+}
+
+function buildMaterial(m: MaterialSpec, o: PartInfo): PartMaterials {
   const side = o.doubleSide ? THREE.DoubleSide : THREE.FrontSide;
 
   if (m.type === "pearl") {
@@ -46,11 +67,9 @@ export function buildPartMaterials(m: MaterialSpec, o: PartInfo): PartMaterials 
   if (m.type === "dream") {
     const info = { axisLen: o.axisLen ?? 0, radial: o.radial, doubleSide: o.doubleSide };
     const material = makeDreamMaterial(m.dream, info);
-    material.userData.speed = m.dream.speed;
     let halo: THREE.ShaderMaterial | null = null;
     if (m.dream.halo > 0 && o.haloGeometry) {
       halo = makeDreamMaterial(m.dream, { ...info, halo: true, center: geometryCenter(o.haloGeometry) });
-      halo.userData.speed = m.dream.speed;
     }
     return { material, halo, disposables: halo ? [material, halo] : [material] };
   }

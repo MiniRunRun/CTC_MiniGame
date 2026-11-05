@@ -13,6 +13,27 @@ Template:
 
 ---
 
+## 2026-11-05 — Four categories per part: Form / Material / Animation / Growing State
+
+**Done:**
+- User: put the glitch motion in a separate **Animation** category (not only glitch); keep the flat
+  pattern/texture in Material; every part gets **Form, Material, Animation, Growing State**.
+- Panel: parts 01–05 now use `PartSection` with collapsible `Category` blocks (Form open by default).
+  Growing State is a placeholder ("Coming later 之后再设计").
+- Materials are now still images: removed Dream `speed`, Glitch `tear` and `speed`.
+- New `spec.animations[part]` (`AnimationSpec`) + `src/scene/animation.ts`: Sway, Pulse, Glitch tearing (+ band
+  height), Pattern Motion (Dream/Glitch only), Speed. Works on every material via onBeforeCompile. Stem sway moves
+  the whole plant so leaves/flowers stay attached.
+- Tested: categories render; petal sway + glitch + pattern on Glitch material; stem sway with leaves/flower
+  following; leaf pulse; glitch tearing on Natural petals and Pearl leaves. No new console errors.
+
+**Not finished / known issues:** Shadows don't follow animation. Pulse on parts scales around their attach
+point. Dream now moves only if Pattern Motion > 0 (was moving by default before). Growing State not designed yet.
+
+**Next:** talk with the user about Growing State (生长状态).
+
+---
+
 ## 2026-11-04 — Glitch material (故障材质) from the user's glitch image
 
 **Done:**

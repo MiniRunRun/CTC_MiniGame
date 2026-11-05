@@ -99,7 +99,8 @@ export interface ArchitectureSpec {
  *   natural = lit by the scene lights (MeshStandardMaterial)
  *   pearl   = stylized "painted light" from a generated matcap (scene/matcap.ts)
  *   dream   = gradient-map shader with optional halo shell (scene/dreamMaterial.ts)
- *   glitch  = broken-video look: grey levels, stripes, tearing, neon accents (scene/glitchMaterial.ts)
+ *   glitch  = broken-video look: grey levels, stripes, neon accents, grain (scene/glitchMaterial.ts)
+ * Materials are still images; all motion lives in AnimationSpec.
  * Materials live in `PlantSpec.materials`, not inside each part's settings, so changing a material never
  * rebuilds the plant's geometry.
  */
@@ -125,7 +126,6 @@ export interface DreamSpec {
   repeat: number; // 1 – 4, ramp repeats → contour rings
   fringe: number; // 0 – 1, rainbow edges (r/g/b read the ramp slightly apart)
   flow: number; // 0 – 1, noise wobble of the color bands (melted look)
-  speed: number; // 0 – 1, how fast the bands move (0 = still)
   edge: number; // 0 – 1, edges fade out (makes the part transparent)
   halo: number; // 0 – 0.6, size of a soft glow shell around each copy of the part (0 = off; not on the stem)
   haloColor: string;
@@ -143,10 +143,8 @@ export interface GlitchSpec {
   stripes: number; // 0 – 1, vertical line pattern on bright areas and random bands
   stripeWidth: number; // 2 – 12 screen pixels per stripe pair
   block: number; // 0 – 1, height of the horizontal glitch bands
-  tear: number; // 0 – 1, how far bands slide sideways (0 = no tearing)
   accents: number; // 0 – 1, how much green/cyan shows
   grain: number; // 0 – 1
-  speed: number; // 0 – 1, how often the glitch jumps (0 = frozen)
 }
 
 export interface MaterialSpec {
@@ -154,6 +152,19 @@ export interface MaterialSpec {
   pearl: PearlSpec; // used when type = "pearl"
   dream: DreamSpec; // used when type = "dream"
   glitch: GlitchSpec; // used when type = "glitch"
+}
+
+/**
+ * Animation per part (动画). Every motion is an amount 0 – 1 (0 = off), so motions can be mixed.
+ * Works with every material (see scene/animation.ts).
+ */
+export interface AnimationSpec {
+  sway: number; // 摇摆: bends back and forth from where the part is attached
+  pulse: number; // 呼吸: grows and shrinks a little
+  glitch: number; // 故障: horizontal screen bands jump sideways (tearing)
+  glitchBlock: number; // 0 – 1, height of the tearing bands
+  pattern: number; // 图案流动: the material's pattern moves (Dream bands, Glitch blocks & grain)
+  speed: number; // 0 – 1, speed of all of the above
 }
 
 /** Which part a material belongs to. Sepals & buds share one; the stem's material is also used for receptacles. */
@@ -187,6 +198,7 @@ export interface PlantSpec {
   sepals: SepalSpec;
   architecture: ArchitectureSpec;
   materials: Record<MaterialPart, MaterialSpec>;
+  animations: Record<MaterialPart, AnimationSpec>; // same parts as materials
   scene: SceneSpec;
   effect: EffectSpec;
 }
@@ -214,7 +226,6 @@ function material(halo: number): MaterialSpec {
       repeat: 1,
       fringe: 0.4,
       flow: 0.3,
-      speed: 0.2,
       edge: 0,
       halo,
       haloColor: "#f0b3bd",
@@ -231,12 +242,15 @@ function material(halo: number): MaterialSpec {
       stripes: 0.5,
       stripeWidth: 5,
       block: 0.4,
-      tear: 0.3,
       accents: 0.35,
       grain: 0.4,
-      speed: 0.3,
     },
   };
+}
+
+/** Default animation: everything still. */
+function animation(): AnimationSpec {
+  return { sway: 0, pulse: 0, glitch: 0, glitchBlock: 0.4, pattern: 0, speed: 0.5 };
 }
 
 export const DEFAULT_SPEC: PlantSpec = {
@@ -311,6 +325,13 @@ export const DEFAULT_SPEC: PlantSpec = {
     petals: material(0.25), // petals get a halo by default when switched to Dream
     center: material(0),
     sepals: material(0),
+  },
+  animations: {
+    stem: animation(),
+    leaves: animation(),
+    petals: animation(),
+    center: animation(),
+    sepals: animation(),
   },
   scene: {
     background: "#1d1f24",
