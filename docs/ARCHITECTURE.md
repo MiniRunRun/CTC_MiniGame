@@ -94,7 +94,11 @@ small JSON file, which the garden can reuse later.
   `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
   (fract(l·levels) near 0/1) in random bands and in random blocks. Random choices use step = floor(uTime·10), so
   with pattern motion they re-roll; with uTime 0 it's a still image. Tearing moved to Animation.
-- **Cube build (`spec.cubes[part]`, `src/plant/cubes.ts`):** `cubify(geometry, {spec, color, axis})` scatters
+- **Box builds (`spec.cubes[part]`, `src/plant/cubes.ts`):** `cubify()` picks `buildBlocks` or `buildCubes`.
+  Cubes: cell = part length ÷ count, same surface sampling; per box a deterministic random tilt (≤ ~40°·tilt),
+  size ×(1 + variation·rand), a palette start and gradient direction; corner colors = palette(start +
+  gradient·(local·dir)·1.6), ping-pong over 5 stops, on an 8×8×8-segment box so the gradient shows inside faces.
+  Blocks: `buildBlocks` scatters
   points over every triangle (by area, deterministic RNG), buckets them into cells of the cube size (one cube per
   cell; thin blades' two faces merge), then places a cube per cell — follow: at the averaged point, basis =
   (part length direction projected on the surface, averaged normal); grid: cell center, axis-aligned. Corner

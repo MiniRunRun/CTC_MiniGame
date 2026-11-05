@@ -89,11 +89,11 @@ export default function Plant() {
     [layout, spec.petals, spec.center.size, spec.sepals.count],
   );
 
-  // Geometries (one per part type). With Form → Build = Cubes, each is rebuilt from cubes (cubes.ts).
+  // Geometries (one per part type). With Form → Build = Blocks / Cubes, each is rebuilt from boxes (cubes.ts).
   const cb = spec.cubes;
   // The smooth source geometry is freed once cubified (except the stem's, which belongs to the layout).
   const cube = (on: CubeSpec, color: string, axis: CubeAxis, keepSource = false) => (g: THREE.BufferGeometry) => {
-    if (on.build !== "cubes") return g;
+    if (on.build === "smooth") return g;
     const out = cubify(g, { spec: on, color, axis });
     if (!keepSource) g.dispose();
     return out;
@@ -124,8 +124,8 @@ export default function Plant() {
     [layout, cb.stem, spec.stem.color],
   );
   // Cube parts carry their colors in the geometry (gradient), so materials must use vertex colors.
-  const stemCubes = cb.stem.build === "cubes";
-  const centerCubes = cb.center.build === "cubes";
+  const stemCubes = cb.stem.build !== "smooth";
+  const centerCubes = cb.center.build !== "smooth";
   // Fused abstract petals: one melted shape per flower, drawn on every flower head instead of single petals.
   const fusedOn = spec.petals.style === "abstract" && spec.petals.join === "fused";
   const fused = useMemo(

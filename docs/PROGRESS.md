@@ -13,6 +13,20 @@ Template:
 
 ---
 
+## 2026-11-05 — Build: Blocks 积木 kept, new Cubes 立方体 (big gradient boxes)
+
+**Done:**
+- User: the small-cube build feels like building blocks (keep it), but wants the feel of their references — big
+  boxes, each with a rich multi-color gradient (orange/pink/lavender/olive/dark green), scattered/overlapping.
+- Build is now Smooth / Blocks 积木 (the previous mode) / Cubes 立方体 (new `buildCubes`): Count, Variation,
+  Tilt, Gradient, 5-color Palette per part.
+- Tested: all parts as Cubes on a light background, hidden ground — big tilted gradient boxes; no console errors.
+
+**Not finished / known issues:** Stem Cubes are chunky (box size from stem length ÷ count, not thickness).
+No film grain on the boxes (could add with the 09 Effect grain or a material option).
+
+---
+
 ## 2026-11-05 — Form → Build: parts made of gradient cubes (立方体构造)
 
 **Done:**

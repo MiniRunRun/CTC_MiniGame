@@ -95,15 +95,24 @@ export interface ArchitectureSpec {
 }
 
 /**
- * Build per part (构造, part of Form 形态): smooth = the normal surface; cubes = the surface rebuilt from small
- * gradient-colored cubes that follow the part's shape (see cubes.ts). Same parts as materials.
+ * Build per part (构造, part of Form 形态), see cubes.ts. Same parts as materials.
+ *   smooth = the normal surface
+ *   blocks 积木 = many small equal cubes tiling the surface, one gradient along the whole part
+ *   cubes 立方体 = few big boxes of mixed sizes, each with its own full 5-color gradient
  */
 export interface CubeSpec {
-  build: "smooth" | "cubes";
+  build: "smooth" | "blocks" | "cubes";
+  // Blocks
   size: number; // cube edge, 0.003 – 0.05 m
   align: "follow" | "grid"; // 顺着走势: cubes lie on the surface along the part / 网格: axis-aligned voxels
   gap: number; // 0 – 0.6, space between cubes (fraction of the cube size)
   color2: string; // gradient end color (start = the part's own color), base → tip
+  // Cubes
+  count: number; // 1 – 24, about how many boxes along the part's length (fewer = bigger boxes)
+  variation: number; // 0 – 1, how different box sizes/proportions are
+  tilt: number; // 0 – 1, random turn of each box away from the surface
+  gradient: number; // 0 (flat color per box) – 1 (full gradient across each box)
+  palette: string[]; // 5 colors; each box starts somewhere different in it
 }
 
 /**
@@ -270,8 +279,20 @@ function material(halo: number): MaterialSpec {
 }
 
 /** Default build: smooth, with cube settings ready for when the player switches. */
-function cubes(size: number, color2: string): CubeSpec {
-  return { build: "smooth", size, align: "follow", gap: 0.1, color2 };
+// Cubes palette is from the user's big-gradient-cube reference: orange → pink → lavender → olive → dark green.
+function cubes(size: number, color2: string, count: number): CubeSpec {
+  return {
+    build: "smooth",
+    size,
+    align: "follow",
+    gap: 0.1,
+    color2,
+    count,
+    variation: 0.6,
+    tilt: 0.3,
+    gradient: 0.8,
+    palette: ["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"],
+  };
 }
 
 /** Default animation: everything still. */
@@ -361,11 +382,11 @@ export const DEFAULT_SPEC: PlantSpec = {
   },
   plantAnimation: { glitch: 0, glitchBlock: 0.4, speed: 0.5 },
   cubes: {
-    stem: cubes(0.012, "#b8e07a"),
-    leaves: cubes(0.01, "#d9f2a6"),
-    petals: cubes(0.012, "#fff1c9"),
-    center: cubes(0.008, "#ff8a3d"),
-    sepals: cubes(0.007, "#d9f2a6"),
+    stem: cubes(0.012, "#b8e07a", 14),
+    leaves: cubes(0.01, "#d9f2a6", 2),
+    petals: cubes(0.012, "#fff1c9", 2),
+    center: cubes(0.008, "#ff8a3d", 2),
+    sepals: cubes(0.007, "#d9f2a6", 2),
   },
   scene: {
     background: "#1d1f24",

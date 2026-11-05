@@ -13,6 +13,17 @@ Template:
 
 ---
 
+## 2026-11-05 — Two box builds: Blocks (one gradient per part) vs Cubes (one gradient per box)
+
+**Choice:** Keep the small-cube build as Blocks 积木; add Cubes 立方体 = few large, varied, tilted boxes, each
+with its own 5-color palette gradient, built on finely segmented boxes (vertex colors).
+**Why:** User said small cubes read as building blocks; their references show big boxes where the gradient lives
+inside each box. Segmented boxes let vertex colors show several stops per face without a new shader, so every
+material and animation keeps working.
+**Alternatives considered:** a gradient shader per box (would replace the part's material choice).
+
+---
+
 ## 2026-11-05 — Cube build works on finished geometry, one cube per grid cell
 
 **Choice:** Cubes are made from each part's finished geometry (surface sampling + one cube per cell of the cube

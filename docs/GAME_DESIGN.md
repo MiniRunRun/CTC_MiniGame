@@ -54,9 +54,13 @@ These were not in the user's list. They were added because the 3D needs them; re
 - **Every part section (01–05) has four categories** (user request, 2026-11-05):
   **Form 形态** (shape, size, count, color — the original sliders) · **Material 材质** · **Animation 动画** ·
   **Growing State 生长状态** (placeholder, to be designed with the user later).
-- **Form → Build 构造** (every part): Smooth 平滑 / **Cubes 立方体** — the part is rebuilt from small cubes
-  that follow its shape, each colored by a gradient from the part's Color (base) to Gradient End 渐变终点色 (tip).
-  Cube Size, Align 排列 (Follow 顺着走势 = cubes lie on the surface along the part / Grid 网格 = voxels), Gap.
+- **Form → Build 构造** (every part): Smooth 平滑 / **Blocks 积木** / **Cubes 立方体**.
+  - Blocks: many small cubes that follow the shape, one gradient from the part's Color (base) to Gradient End
+    渐变终点色 (tip). Cube Size, Align 排列 (Follow 顺着走势 / Grid 网格), Gap.
+  - Cubes (user's references: big gradient cubes, scattered pastel boxes, flat overlapping blocks): few big boxes
+    of mixed sizes, loosely following the part, tilted and overlapping; each box has its own full gradient from a
+    5-color Palette 色板 (default orange → pink → lavender → olive → dark green). Count 数量 (boxes along the
+    part), Variation 大小变化, Tilt 倾斜, Gradient 渐变 (0 = one flat color per box).
   Stem's setting also covers receptacles; Sepals' covers buds.
 - **Material 材质** (still images, no motion): each part
   picks its own **Natural 自然 / Pearl 珍珠 / Dream 梦境 / Glitch 故障** with its own settings.

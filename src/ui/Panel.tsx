@@ -39,7 +39,7 @@ function Category(props: { en: string; zh: string; open?: boolean; children: Rea
 }
 
 /**
- * Form → Build 构造: smooth surface, or rebuilt from gradient cubes that follow the part's shape (plant/cubes.ts).
+ * Form → Build 构造: smooth surface, Blocks 积木 (small cubes) or Cubes 立方体 (big gradient boxes), plant/cubes.ts.
  */
 function CubeControls({ part }: { part: MaterialPart }) {
   const c = usePlant((st) => st.spec.cubes[part]);
@@ -54,10 +54,11 @@ function CubeControls({ part }: { part: MaterialPart }) {
         onChange={(build) => set({ build })}
         options={[
           { value: "smooth", label: "Smooth 平滑" },
+          { value: "blocks", label: "Blocks 积木" },
           { value: "cubes", label: "Cubes 立方体" },
         ]}
       />
-      {c.build === "cubes" && (
+      {c.build === "blocks" && (
         <>
           <Slider label="Cube Size 立方体大小" value={c.size} min={0.003} max={0.05} step={0.001} format={mm} onChange={(size) => set({ size })} />
           <Choice
@@ -72,6 +73,24 @@ function CubeControls({ part }: { part: MaterialPart }) {
           <Slider label="Gap 间隙" value={c.gap} min={0} max={0.6} step={0.01} format={pct} onChange={(gap) => set({ gap })} />
           <ColorPicker label="Gradient End 渐变终点色" value={c.color2} onChange={(color2) => set({ color2 })} />
           <p className="hint">Gradient runs from the part's Color (base) to this color (tip).</p>
+        </>
+      )}
+      {c.build === "cubes" && (
+        <>
+          <Slider label="Count 数量" value={c.count} min={1} max={24} step={1} onChange={(count) => set({ count })} />
+          <Slider label="Variation 大小变化" value={c.variation} min={0} max={1} step={0.01} format={pct} onChange={(variation) => set({ variation })} />
+          <Slider label="Tilt 倾斜" value={c.tilt} min={0} max={1} step={0.01} format={pct} onChange={(tilt) => set({ tilt })} />
+          <Slider label="Gradient 渐变" value={c.gradient} min={0} max={1} step={0.01} format={pct} onChange={(gradient) => set({ gradient })} />
+          <div className="ramp-preview" style={{ background: `linear-gradient(90deg, ${c.palette.join(", ")})` }} />
+          {c.palette.map((col, i) => (
+            <ColorPicker
+              key={i}
+              label={`Palette ${i + 1} 色板`}
+              value={col}
+              onChange={(v) => set({ palette: usePlant.getState().spec.cubes[part].palette.map((x, k) => (k === i ? v : x)) })}
+            />
+          ))}
+          <p className="hint">Each cube has its own gradient from this palette. Gradient 0 = one flat color per cube.</p>
         </>
       )}
     </div>
