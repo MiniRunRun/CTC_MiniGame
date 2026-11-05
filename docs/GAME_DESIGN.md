@@ -52,11 +52,15 @@ These were not in the user's list. They were added because the 3D needs them; re
 - Petals (abstract): **Join 连接 Separate / Fused 融合** — fused melts round petals and stalks into one blobby
   shape (Stalk Length, Stalk Width, Blend, Detail). From the user's pearl reference image.
 - **Material 材质 in every part section** (stem, leaves, petals, center, sepals & buds — user request): each part
-  picks its own **Natural 自然 / Pearl 珍珠 / Dream 梦境** with its own settings.
+  picks its own **Natural 自然 / Pearl 珍珠 / Dream 梦境 / Glitch 故障** with its own settings.
   - Pearl: stylized "painted light" (Highlight, Glow, Body, Shadow colors, Highlight Size, Softness, Rim,
     Light Angle, Part Colors on/off) with a preview ball.
   - Dream: 5-color ramp inside the part, colored by facing / length (blades only) / noise, with Repeat, Fringe,
     Flow, Speed, Edge Fade and a Halo glow shell (not on the stem).
+  - Glitch: broken-video look from the user's glitch reference image — flat grey levels, vertical stripes,
+    horizontal bands that tear sideways, neon green/cyan accents, grain (Dark/Mid/Light, Accent 1/2, Levels,
+    Stripes, Stripe Width, Block Height, Tear, Accents, Grain, Speed). Looks closest to the reference with
+    07 Scene background ≈ #a4a4a4 and Ground hidden.
 - **07 Scene 场景**: Background color, Ground show/hide.
 - **08 Effect 后期效果**: None / **Dream 梦境** — blur + 5-color gradient map (Blur, Contrast, Offset, Repeat,
   Fringe, Grain). From the user's blurred, pink-haloed reference image.

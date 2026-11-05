@@ -13,6 +13,18 @@ Template:
 
 ---
 
+## 2026-11-04 — Glitch is a per-part material, with screen-space patterns
+
+**Choice:** Glitch is a 4th `MaterialType` (not a screen effect). Stripes, bands and blocks are computed from
+gl_FragCoord (screen pixels); tearing shifts vertices per screen band in the vertex shader.
+**Why:** The user asked for the image's components "as part of our material". Screen-space patterns match the
+reference (a flat video frame) better than patterns stuck to the surface; moving vertices is the only way a
+material can make the part itself tear, since it can't move pixels it doesn't own.
+**Alternatives considered:** a post-processing Glitch effect (tears the whole frame incl. background — possible
+later as an 08 Effect option); surface-space stripes (look like a striped texture, not a glitch).
+
+---
+
 ## 2026-11-04 — Materials are chosen per part and stored apart from shapes
 
 **Choice:** `spec.materials[part] = { type: natural|pearl|dream, pearl, dream }` for stem, leaves, petals, center,

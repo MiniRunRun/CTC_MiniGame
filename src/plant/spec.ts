@@ -99,10 +99,11 @@ export interface ArchitectureSpec {
  *   natural = lit by the scene lights (MeshStandardMaterial)
  *   pearl   = stylized "painted light" from a generated matcap (scene/matcap.ts)
  *   dream   = gradient-map shader with optional halo shell (scene/dreamMaterial.ts)
+ *   glitch  = broken-video look: grey levels, stripes, tearing, neon accents (scene/glitchMaterial.ts)
  * Materials live in `PlantSpec.materials`, not inside each part's settings, so changing a material never
  * rebuilds the plant's geometry.
  */
-export type MaterialType = "natural" | "pearl" | "dream";
+export type MaterialType = "natural" | "pearl" | "dream" | "glitch";
 
 /** Pearl (珍珠): ramp from the dark side of a ball to its highlight. */
 export interface PearlSpec {
@@ -131,10 +132,28 @@ export interface DreamSpec {
   haloOpacity: number; // 0 – 1
 }
 
+/** Glitch (故障): broken digital frame, from the user's grey/green glitch reference image. */
+export interface GlitchSpec {
+  dark: string; // grey levels, dark → light
+  mid: string;
+  light: string;
+  accent: string; // neon accents on level edges and in random blocks
+  accent2: string;
+  levels: number; // 2 – 6 flat grey steps
+  stripes: number; // 0 – 1, vertical line pattern on bright areas and random bands
+  stripeWidth: number; // 2 – 12 screen pixels per stripe pair
+  block: number; // 0 – 1, height of the horizontal glitch bands
+  tear: number; // 0 – 1, how far bands slide sideways (0 = no tearing)
+  accents: number; // 0 – 1, how much green/cyan shows
+  grain: number; // 0 – 1
+  speed: number; // 0 – 1, how often the glitch jumps (0 = frozen)
+}
+
 export interface MaterialSpec {
   type: MaterialType;
   pearl: PearlSpec; // used when type = "pearl"
   dream: DreamSpec; // used when type = "dream"
+  glitch: GlitchSpec; // used when type = "glitch"
 }
 
 /** Which part a material belongs to. Sepals & buds share one; the stem's material is also used for receptacles. */
@@ -200,6 +219,22 @@ function material(halo: number): MaterialSpec {
       halo,
       haloColor: "#f0b3bd",
       haloOpacity: 0.55,
+    },
+    // Glitch defaults are measured from the user's reference image (pixel colors, ~4–7 px stripes).
+    glitch: {
+      dark: "#3e3e3e",
+      mid: "#a4a4a4",
+      light: "#f0f0f0",
+      accent: "#07fe15",
+      accent2: "#31ceb4",
+      levels: 3,
+      stripes: 0.5,
+      stripeWidth: 5,
+      block: 0.4,
+      tear: 0.3,
+      accents: 0.35,
+      grain: 0.4,
+      speed: 0.3,
     },
   };
 }

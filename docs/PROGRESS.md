@@ -13,6 +13,26 @@ Template:
 
 ---
 
+## 2026-11-04 — Glitch material (故障材质) from the user's glitch image
+
+**Done:**
+- User asked to read the image's metadata and turn its parts into a material. The file (2000×1125 WebP) only has
+  an sRGB ICC profile (Google 2016) — no EXIF/XMP, nothing about how it was made. So the parts were measured from
+  the pixels instead: greys #3e3e3e / #a4a4a4 / #d8d8d8 / #f0f0f0 (≈ 90% of the image), neon green #07fe15 /
+  #00aa04 and cyan #31ceb4 / #6eb8af accents, vertical stripes with a 4–7 px period, horizontal torn bands,
+  fine grain (±3 levels).
+- New 4th material type **Glitch 故障** on every part (`src/scene/glitchMaterial.ts`, `GlitchSpec` in spec.ts,
+  `GlitchControls` in Panel.tsx). Defaults use the measured colors.
+- Tested: all five parts on Glitch, grey background + hidden ground looks like the reference, Reset → Natural,
+  no console errors.
+
+**Not finished / known issues:** Stripe/band sizes are in screen pixels (they don't scale with zoom, on purpose).
+Tearing moves vertices, so a triangle that spans two bands stretches (reads as smear). No halo for Glitch.
+
+**Next:** maybe a screen-effect version of Glitch in 08 Effect (whole-frame tearing incl. background).
+
+---
+
 ## 2026-11-04 — Material choice in every part (每个部件的材质)
 
 **Done:**

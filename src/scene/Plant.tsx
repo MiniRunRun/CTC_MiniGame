@@ -61,6 +61,8 @@ function Part({ geometry, mats, matrices }: { geometry: THREE.BufferGeometry; ma
   );
 }
 
+const bufferSize = new THREE.Vector2();
+
 export default function Plant() {
   const spec = usePlant((s) => s.spec);
 
@@ -140,11 +142,14 @@ export default function Plant() {
   useDisposeOnChange(budMat.disposables);
   useDisposeOnChange(useMemo(() => centerMats.flatMap((m) => m.disposables), [centerMats]));
 
-  // Dream materials: move the color bands over time, each at its own part's speed.
+  // Dream / glitch materials: animate each at its own part's speed. Glitch also needs the screen size in pixels.
   useFrame((state) => {
+    state.gl.getDrawingBufferSize(bufferSize);
     for (const pm of allMats) {
       for (const m of [pm.material, pm.halo]) {
-        if (m instanceof THREE.ShaderMaterial) m.uniforms.uTime.value = state.clock.elapsedTime * m.userData.speed;
+        if (!(m instanceof THREE.ShaderMaterial)) continue;
+        m.uniforms.uTime.value = state.clock.elapsedTime * m.userData.speed;
+        m.uniforms.uRes?.value.copy(bufferSize);
       }
     }
   });

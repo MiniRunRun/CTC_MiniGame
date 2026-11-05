@@ -1,9 +1,10 @@
-// Turns one part's MaterialSpec (natural / pearl / dream) into three.js materials.
+// Turns one part's MaterialSpec (natural / pearl / dream / glitch) into three.js materials.
 // Used by Plant.tsx for every part: stem, leaves, petals, center, sepals & buds.
 import * as THREE from "three";
 import type { MaterialSpec } from "../plant/spec";
 import { makeMatcapTexture } from "./matcap";
 import { geometryCenter, makeDreamMaterial } from "./dreamMaterial";
+import { makeGlitchMaterial } from "./glitchMaterial";
 
 export interface PartInfo {
   /** The part's colors are in the geometry (vertex colors), e.g. blades and buds. */
@@ -52,6 +53,11 @@ export function buildPartMaterials(m: MaterialSpec, o: PartInfo): PartMaterials 
       halo.userData.speed = m.dream.speed;
     }
     return { material, halo, disposables: halo ? [material, halo] : [material] };
+  }
+
+  if (m.type === "glitch") {
+    const material = makeGlitchMaterial(m.glitch, o.doubleSide);
+    return { material, halo: null, disposables: [material] };
   }
 
   const material = new THREE.MeshStandardMaterial({

@@ -8,7 +8,7 @@ import { petalWidth } from "../plant/petal";
 import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
-import type { DreamSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
+import type { DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -283,7 +283,7 @@ function CenterControls() {
 
 /**
  * Material block (材质), shown at the bottom of every part section.
- * Natural / Pearl 珍珠 / Dream 梦境, each with its own settings, stored in spec.materials[part].
+ * Natural / Pearl 珍珠 / Dream 梦境 / Glitch 故障, each with its own settings, stored in spec.materials[part].
  */
 function MaterialControls({ part, hasLength = false }: { part: MaterialPart; hasLength?: boolean }) {
   const m = usePlant((st) => st.spec.materials[part]);
@@ -293,6 +293,7 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
   const setType = (type: MaterialType) => update("materials", { [part]: { ...latest(), type } });
   const setPearl = (patch: Partial<PearlSpec>) => update("materials", { [part]: { ...latest(), pearl: { ...latest().pearl, ...patch } } });
   const setDream = (patch: Partial<DreamSpec>) => update("materials", { [part]: { ...latest(), dream: { ...latest().dream, ...patch } } });
+  const setGlitch = (patch: Partial<GlitchSpec>) => update("materials", { [part]: { ...latest(), glitch: { ...latest().glitch, ...patch } } });
   return (
     <div className="material">
       <Choice
@@ -303,10 +304,12 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
           { value: "natural", label: "Natural 自然" },
           { value: "pearl", label: "Pearl 珍珠" },
           { value: "dream", label: "Dream 梦境" },
+          { value: "glitch", label: "Glitch 故障" },
         ]}
       />
       {m.type === "pearl" && <PearlControls p={m.pearl} set={setPearl} />}
       {m.type === "dream" && <DreamControls d={m.dream} set={setDream} hasLength={hasLength} halo={part !== "stem"} />}
+      {m.type === "glitch" && <GlitchControls g={m.glitch} set={setGlitch} />}
     </div>
   );
 }
@@ -383,6 +386,31 @@ function DreamControls({ d, set, hasLength, halo }: {
           <Slider label="Halo Opacity 光晕强度" value={d.haloOpacity} min={0} max={1} step={0.01} format={pct} onChange={(haloOpacity) => set({ haloOpacity })} />
         </>
       )}
+    </>
+  );
+}
+
+/** Glitch material: grey levels, stripes, band tearing, neon accents, grain. */
+function GlitchControls({ g, set }: { g: GlitchSpec; set: (patch: Partial<GlitchSpec>) => void }) {
+  return (
+    <>
+      <div
+        className="ramp-preview"
+        style={{ background: `linear-gradient(90deg, ${g.dark} 0 30%, ${g.mid} 30% 60%, ${g.light} 60% 80%, ${g.accent} 80% 90%, ${g.accent2} 90%)` }}
+      />
+      <ColorPicker label="Dark 暗灰" value={g.dark} onChange={(dark) => set({ dark })} />
+      <ColorPicker label="Mid 中灰" value={g.mid} onChange={(mid) => set({ mid })} />
+      <ColorPicker label="Light 亮色" value={g.light} onChange={(light) => set({ light })} />
+      <ColorPicker label="Accent 1 强调色" value={g.accent} onChange={(accent) => set({ accent })} />
+      <ColorPicker label="Accent 2 强调色" value={g.accent2} onChange={(accent2) => set({ accent2 })} />
+      <Slider label="Levels 灰阶层数" value={g.levels} min={2} max={6} step={1} format={(v) => String(v)} onChange={(levels) => set({ levels })} />
+      <Slider label="Stripes 竖条纹" value={g.stripes} min={0} max={1} step={0.01} format={pct} onChange={(stripes) => set({ stripes })} />
+      <Slider label="Stripe Width 条纹宽度" value={g.stripeWidth} min={2} max={12} step={0.5} format={(v) => `${v}px`} onChange={(stripeWidth) => set({ stripeWidth })} />
+      <Slider label="Block Height 色块高度" value={g.block} min={0} max={1} step={0.01} format={pct} onChange={(block) => set({ block })} />
+      <Slider label="Tear 撕裂错位" value={g.tear} min={0} max={1} step={0.01} format={pct} onChange={(tear) => set({ tear })} />
+      <Slider label="Accents 强调色量" value={g.accents} min={0} max={1} step={0.01} format={pct} onChange={(accents) => set({ accents })} />
+      <Slider label="Grain 颗粒" value={g.grain} min={0} max={1} step={0.01} format={pct} onChange={(grain) => set({ grain })} />
+      <Slider label="Speed 跳动速度" value={g.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
     </>
   );
 }

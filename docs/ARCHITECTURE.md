@@ -89,6 +89,12 @@ small JSON file, which the garden can reuse later.
   sampled at t±fringe. Edge Fade → alpha (transparent, no depth write). Halo: same geometry/matrices, vertices
   scaled around the geometry's bbox center by 1+halo, alpha = facing²×opacity, renderOrder 2. `Plant.tsx` updates
   `uTime` each frame (× that part's speed, kept in `material.userData.speed`).
+- **Glitch material (`src/scene/glitchMaterial.ts`):** ShaderMaterial, same chunks. Light = fixed view-space
+  direction + facing, + grain, posterized to `levels` greys. Screen-space (gl_FragCoord) pieces: bands of
+  `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
+  (fract(l·levels) near 0/1) in random bands and in random blocks. Tearing is in the vertex shader: per screen band
+  and per time step (floor(uTime·10)), some bands shift gl_Position.x — so the geometry itself tears/smears.
+  Needs `uRes` (drawing-buffer size), which `Plant.tsx` sets every frame.
 - **Screen effects (`src/scene/Effects.tsx`):** when `effect.mode = "dream"`, an EffectComposer renders the scene
   to a texture, blurs it (separable 9-tap Gaussian, 3 horizontal+vertical rounds, radius ∝ screen height ×
   `blur`), then maps perceptual brightness through `contrast`/`offset`/`repeat` onto the 5 `ramp` colors
