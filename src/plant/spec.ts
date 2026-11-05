@@ -94,28 +94,18 @@ export interface ArchitectureSpec {
   flowers: number; // flowers in a spike or cluster, 3 – 30
 }
 
-/** natural = lit like a real object; pearl = stylized "painted light" from a generated matcap (see scene/matcap.ts);
- *  dream = per-part gradient-map shader with optional halo shell (see scene/dreamMaterial.ts). */
-export type LookStyle = "natural" | "pearl" | "dream";
+/**
+ * Material per part (材质). Every part (stem, leaves, petals, center, sepals & buds) has its own:
+ *   natural = lit by the scene lights (MeshStandardMaterial)
+ *   pearl   = stylized "painted light" from a generated matcap (scene/matcap.ts)
+ *   dream   = gradient-map shader with optional halo shell (scene/dreamMaterial.ts)
+ * Materials live in `PlantSpec.materials`, not inside each part's settings, so changing a material never
+ * rebuilds the plant's geometry.
+ */
+export type MaterialType = "natural" | "pearl" | "dream";
 
-/** Dream material (梦境材质): each part colors itself from a 5-color ramp — unlike the screen effect (EffectSpec). */
-export interface DreamSpec {
-  target: "petals" | "all"; // only petals, or every part
-  input: "facing" | "length" | "noise"; // what picks the ramp color: center→edge, base→tip, or a noise pattern
-  ramp: string[]; // 5 colors, ramp start → end (for facing: center → edge)
-  repeat: number; // 1 – 4, ramp repeats → contour rings
-  fringe: number; // 0 – 1, rainbow edges (r/g/b read the ramp slightly apart)
-  flow: number; // 0 – 1, noise wobble of the color bands (melted look)
-  speed: number; // 0 – 1, how fast the bands move (0 = still)
-  edge: number; // 0 – 1, edges fade out (makes the part transparent)
-  halo: number; // 0 – 0.6, size of a soft glow shell around each petal (0 = off)
-  haloColor: string;
-  haloOpacity: number; // 0 – 1
-}
-
-export interface LookSpec {
-  style: LookStyle;
-  // Pearl ramp, from the dark side of a ball to its highlight:
+/** Pearl (珍珠): ramp from the dark side of a ball to its highlight. */
+export interface PearlSpec {
   shadow: string; // side away from the light
   body: string; // main body
   glow: string; // band around the highlight and the rim
@@ -124,9 +114,36 @@ export interface LookSpec {
   softness: number; // 0 (hard, toon-like edges) – 1 (smooth)
   rim: number; // how much the glow color shows on the edges, 0 – 1
   lightAngle: number; // where the highlight sits, 0 – 360° (90 = top)
-  tint: boolean; // multiply by each part's own colors
+  tint: boolean; // multiply by the part's own colors
+}
+
+/** Dream (梦境): the part colors itself from a 5-color ramp — unlike the screen effect (EffectSpec). */
+export interface DreamSpec {
+  input: "facing" | "length" | "noise"; // what picks the ramp color: center→edge, base→tip, or a noise pattern
+  ramp: string[]; // 5 colors, ramp start → end (for facing: center → edge)
+  repeat: number; // 1 – 4, ramp repeats → contour rings
+  fringe: number; // 0 – 1, rainbow edges (r/g/b read the ramp slightly apart)
+  flow: number; // 0 – 1, noise wobble of the color bands (melted look)
+  speed: number; // 0 – 1, how fast the bands move (0 = still)
+  edge: number; // 0 – 1, edges fade out (makes the part transparent)
+  halo: number; // 0 – 0.6, size of a soft glow shell around each copy of the part (0 = off; not on the stem)
+  haloColor: string;
+  haloOpacity: number; // 0 – 1
+}
+
+export interface MaterialSpec {
+  type: MaterialType;
+  pearl: PearlSpec; // used when type = "pearl"
+  dream: DreamSpec; // used when type = "dream"
+}
+
+/** Which part a material belongs to. Sepals & buds share one; the stem's material is also used for receptacles. */
+export type MaterialPart = "stem" | "leaves" | "petals" | "center" | "sepals";
+
+/** Scene (场景): things that aren't part of the plant. */
+export interface SceneSpec {
   background: string;
-  dream: DreamSpec;
+  ground: boolean; // show the ground disc and soft shadow
 }
 
 /** Screen effect applied after the 3D is drawn (see scene/Effects.tsx). */
@@ -150,8 +167,41 @@ export interface PlantSpec {
   center: CenterSpec;
   sepals: SepalSpec;
   architecture: ArchitectureSpec;
-  look: LookSpec;
+  materials: Record<MaterialPart, MaterialSpec>;
+  scene: SceneSpec;
   effect: EffectSpec;
+}
+
+/** Default material: natural, with pearl and dream settings ready for when the player switches. */
+function material(halo: number): MaterialSpec {
+  return {
+    type: "natural",
+    // Pearl defaults are picked from the user's reference image (lavender-pink highlight, olive glow, off-white body).
+    pearl: {
+      shadow: "#8f88a6",
+      body: "#ece6dd",
+      glow: "#b5a630",
+      highlight: "#e3b6f2",
+      highlightSize: 0.35,
+      softness: 0.55,
+      rim: 0.45,
+      lightAngle: 100,
+      tint: false,
+    },
+    // Dream defaults follow the user's blurred reference: lavender-grey center, olive, pink, white edge.
+    dream: {
+      input: "facing",
+      ramp: ["#a9adc2", "#c9bfe6", "#b3a547", "#f0b3bd", "#f6f2f4"],
+      repeat: 1,
+      fringe: 0.4,
+      flow: 0.3,
+      speed: 0.2,
+      edge: 0,
+      halo,
+      haloColor: "#f0b3bd",
+      haloOpacity: 0.55,
+    },
+  };
 }
 
 export const DEFAULT_SPEC: PlantSpec = {
@@ -220,33 +270,16 @@ export const DEFAULT_SPEC: PlantSpec = {
     mode: "single",
     flowers: 12,
   },
-  // Pearl defaults are picked from the user's reference image (lavender-pink highlight, olive glow, off-white body).
-  look: {
-    style: "natural",
-    shadow: "#8f88a6",
-    body: "#ece6dd",
-    glow: "#b5a630",
-    highlight: "#e3b6f2",
-    highlightSize: 0.35,
-    softness: 0.55,
-    rim: 0.45,
-    lightAngle: 100,
-    tint: false,
-    background: "#000000",
-    // Dream material defaults follow the user's blurred reference: lavender-grey center, olive, pink, white edge.
-    dream: {
-      target: "petals",
-      input: "facing",
-      ramp: ["#a9adc2", "#c9bfe6", "#b3a547", "#f0b3bd", "#f6f2f4"],
-      repeat: 1,
-      fringe: 0.4,
-      flow: 0.3,
-      speed: 0.2,
-      edge: 0,
-      halo: 0.25,
-      haloColor: "#f0b3bd",
-      haloOpacity: 0.55,
-    },
+  materials: {
+    stem: material(0),
+    leaves: material(0),
+    petals: material(0.25), // petals get a halo by default when switched to Dream
+    center: material(0),
+    sepals: material(0),
+  },
+  scene: {
+    background: "#1d1f24",
+    ground: true,
   },
   // Dream defaults are picked from the user's reference image: white background, pink halos, olive, lavender-grey shapes.
   effect: {

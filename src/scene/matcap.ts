@@ -1,17 +1,17 @@
-// Pearl look (珍珠风格化): a "matcap" painted on a canvas.
+// Pearl material (珍珠材质): a "matcap" painted on a canvas.
 // A matcap is a picture of a lit ball. MeshMatcapMaterial colors every surface point by looking up the spot
-// on that ball that faces the same way, so whatever light we paint here is how the whole plant looks.
+// on that ball that faces the same way, so whatever light we paint here is how the part looks.
 // No scene lights are used: the light is "painted", which gives a stylized, illustration-like result.
 //
 // Painting order for each pixel of the ball (normal n, light direction L, d = n·L):
 //   shadow → body (by d) → glow band just outside the highlight → highlight → white core,
 //   then the glow color on the rim (edges facing away from the camera).
 import * as THREE from "three";
-import type { LookSpec } from "../plant/spec";
+import type { PearlSpec } from "../plant/spec";
 
 const SIZE = 256;
 
-export function paintMatcap(look: LookSpec, size = SIZE): HTMLCanvasElement {
+export function paintMatcap(look: PearlSpec, size = SIZE): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext("2d")!;
@@ -62,7 +62,7 @@ export function paintMatcap(look: LookSpec, size = SIZE): HTMLCanvasElement {
   return canvas;
 }
 
-export function makeMatcapTexture(look: LookSpec): THREE.CanvasTexture {
+export function makeMatcapTexture(look: PearlSpec): THREE.CanvasTexture {
   const tex = new THREE.CanvasTexture(paintMatcap(look));
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

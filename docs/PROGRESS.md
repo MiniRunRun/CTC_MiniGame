@@ -13,6 +13,25 @@ Template:
 
 ---
 
+## 2026-11-04 — Material choice in every part (每个部件的材质)
+
+**Done:**
+- User correction: they want a **Material** option on *each component*, with Pearl as one of the choices — not
+  one global look. The global "07 Look" section is gone.
+- Every part section (01 Stem, 02 Leaves, 03 Petals, 04 Center, 05 Sepals & Buds) now ends with a
+  **Material 材质** block: Natural / Pearl 珍珠 / Dream 梦境, each with its own full settings per part.
+  Stem's material also applies to receptacles; Sepals' to buds. "Length" is only offered on blade parts.
+  Halo is offered on everything except the stem (a single tube can't be scaled around a center sensibly).
+- New **07 Scene 场景**: background color and ground show/hide (previously Pearl hid the ground automatically).
+- Code: `spec.materials` (+ `MaterialSpec`, `PearlSpec`, `DreamSpec`, `SceneSpec`), new `src/scene/partMaterial.ts`,
+  `Plant.tsx` `<Part>` component, `Panel.tsx` `MaterialControls` / `PearlControls` / `DreamControls` / `SceneControls`.
+- Tested: different materials on every part at once, per-part pearl settings stay independent, fused + dream
+  halo, scene hide ground, Reset → all Natural. No console errors.
+
+**Not finished / known issues:** same as the two entries below (fused limits, edge-fade sorting).
+
+**Next:** user feedback; maybe material presets / copy a material to all parts.
+
 ## 2026-11-04 — Dream material (梦境材质), the per-part version of Dream
 
 **Done:**

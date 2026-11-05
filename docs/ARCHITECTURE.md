@@ -76,15 +76,19 @@ small JSON file, which the garden can reuse later.
   each petal — are smooth-min blended (`blend` → radius) into a `detail`³ grid, each piece only over its bounding
   box. three.js `MarchingCubes` (field = −distance, isolation 0) makes the triangles, which are copied into a plain
   geometry with vertex colors (`color` near the center → `color2` on the petals) and instanced on `parts.heads`.
-- **Look (`src/scene/matcap.ts`, `Plant.tsx`):** `look.style = "pearl"` swaps every material for
-  `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light; shadow → body → glow →
-  highlight → white core, glow on the rim). `look.tint` multiplies by part colors. Viewport hides ground/shadows.
-- **Dream material (`src/scene/dreamMaterial.ts`):** `look.style = "dream"`. ShaderMaterial built from three chunks
+- **Materials per part (`spec.materials`, `src/scene/partMaterial.ts`):** `materials.stem | leaves | petals |
+  center | sepals` each hold `{ type, pearl, dream }`. They're kept outside the part specs so a material change
+  never rebuilds geometry. `buildPartMaterials(spec, info)` returns `{ material, halo, disposables }`; the stem's
+  material also covers receptacles, the sepals' covers buds. `Plant.tsx` draws each part with `<Part>` (instances +
+  optional halo instances). `spec.scene` holds background color and ground on/off.
+- **Pearl (`src/scene/matcap.ts`):** `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light;
+  shadow → body → glow → highlight → white core, glow on the rim). `pearl.tint` multiplies by part colors.
+- **Dream material (`src/scene/dreamMaterial.ts`):** ShaderMaterial built from three chunks
   (`beginnormal/defaultnormal/begin/project_vertex`, so InstancedMesh works). t = 1−|n·v| (facing), x/len
   (length; radial for fused) or 3D value noise; + flow noise moving with time×speed; ping-pong repeat; r/g/b
   sampled at t±fringe. Edge Fade → alpha (transparent, no depth write). Halo: same geometry/matrices, vertices
   scaled around the geometry's bbox center by 1+halo, alpha = facing²×opacity, renderOrder 2. `Plant.tsx` updates
-  `uTime` each frame. Target "petals" leaves other parts natural; "all" uses it everywhere.
+  `uTime` each frame (× that part's speed, kept in `material.userData.speed`).
 - **Screen effects (`src/scene/Effects.tsx`):** when `effect.mode = "dream"`, an EffectComposer renders the scene
   to a texture, blurs it (separable 9-tap Gaussian, 3 horizontal+vertical rounds, radius ∝ screen height ×
   `blur`), then maps perceptual brightness through `contrast`/`offset`/`repeat` onto the 5 `ramp` colors

@@ -8,6 +8,7 @@ import { petalWidth } from "../plant/petal";
 import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
+import type { DreamSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -280,38 +281,87 @@ function CenterControls() {
   );
 }
 
-/** Dream material (inside each part). The whole-screen version is 08 Effect → Dream. */
-function DreamControls() {
-  const d = usePlant((st) => st.spec.look.dream);
+/**
+ * Material block (材质), shown at the bottom of every part section.
+ * Natural / Pearl 珍珠 / Dream 梦境, each with its own settings, stored in spec.materials[part].
+ */
+function MaterialControls({ part, hasLength = false }: { part: MaterialPart; hasLength?: boolean }) {
+  const m = usePlant((st) => st.spec.materials[part]);
   const update = usePlant((st) => st.update);
-  // Read the latest dream settings (not this render's copy) so quick successive changes don't undo each other.
-  const set = (patch: Partial<typeof d>) => update("look", { dream: { ...usePlant.getState().spec.look.dream, ...patch } });
+  // Always start from the latest store state so quick successive changes don't undo each other.
+  const latest = () => usePlant.getState().spec.materials[part];
+  const setType = (type: MaterialType) => update("materials", { [part]: { ...latest(), type } });
+  const setPearl = (patch: Partial<PearlSpec>) => update("materials", { [part]: { ...latest(), pearl: { ...latest().pearl, ...patch } } });
+  const setDream = (patch: Partial<DreamSpec>) => update("materials", { [part]: { ...latest(), dream: { ...latest().dream, ...patch } } });
+  return (
+    <div className="material">
+      <Choice
+        label="Material 材质"
+        value={m.type}
+        onChange={setType}
+        options={[
+          { value: "natural", label: "Natural 自然" },
+          { value: "pearl", label: "Pearl 珍珠" },
+          { value: "dream", label: "Dream 梦境" },
+        ]}
+      />
+      {m.type === "pearl" && <PearlControls p={m.pearl} set={setPearl} />}
+      {m.type === "dream" && <DreamControls d={m.dream} set={setDream} hasLength={hasLength} halo={part !== "stem"} />}
+    </div>
+  );
+}
+
+function PearlControls({ p, set }: { p: PearlSpec; set: (patch: Partial<PearlSpec>) => void }) {
+  // Small picture of the painted light ball, so the player sees what the colors do.
+  const preview = useMemo(() => paintMatcap(p, 96).toDataURL(), [p]);
+  return (
+    <>
+      <img className="matcap-preview" src={preview} alt="Pearl light preview" />
+      <ColorPicker label="Highlight 高光" value={p.highlight} onChange={(highlight) => set({ highlight })} />
+      <ColorPicker label="Glow 光晕/边缘" value={p.glow} onChange={(glow) => set({ glow })} />
+      <ColorPicker label="Body 主体" value={p.body} onChange={(body) => set({ body })} />
+      <ColorPicker label="Shadow 暗部" value={p.shadow} onChange={(shadow) => set({ shadow })} />
+      <Slider label="Highlight Size 高光大小" value={p.highlightSize} min={0.05} max={0.7} step={0.01} format={pct} onChange={(highlightSize) => set({ highlightSize })} />
+      <Slider label="Softness 柔和度" value={p.softness} min={0} max={1} step={0.01} format={pct} onChange={(softness) => set({ softness })} />
+      <Slider label="Rim 边缘光" value={p.rim} min={0} max={1} step={0.01} format={pct} onChange={(rim) => set({ rim })} />
+      <Slider label="Light Angle 光源方向" value={p.lightAngle} min={0} max={360} step={1} format={deg} onChange={(lightAngle) => set({ lightAngle })} />
+      <Choice
+        label="Part Colors 部件颜色"
+        value={p.tint ? "on" : "off"}
+        onChange={(v) => set({ tint: v === "on" })}
+        options={[
+          { value: "off", label: "Off 纯珍珠色" },
+          { value: "on", label: "On 叠加部件颜色" },
+        ]}
+      />
+    </>
+  );
+}
+
+/** Dream material (inside the part). The blurred whole-screen version is 08 Effect. */
+function DreamControls({ d, set, hasLength, halo }: {
+  d: DreamSpec;
+  set: (patch: Partial<DreamSpec>) => void;
+  hasLength: boolean; // part has a base→tip direction (blades); otherwise "Length" isn't offered
+  halo: boolean; // part can have a halo shell (not the stem)
+}) {
   const setRamp = (i: number, color: string) => set({ ramp: d.ramp.map((c, k) => (k === i ? color : c)) });
+  const input = !hasLength && d.input === "length" ? "facing" : d.input;
   const ends: Record<typeof d.input, [string, string]> = {
     facing: ["center 中心", "edge 边缘"],
     length: ["base 根部", "tip 尖端"],
     noise: ["low 低", "high 高"],
   };
-  const names = [`1 ${ends[d.input][0]}`, "2", "3", "4", `5 ${ends[d.input][1]}`];
+  const names = [`1 ${ends[input][0]}`, "2", "3", "4", `5 ${ends[input][1]}`];
   return (
     <>
-      <p className="hint">Colors each part from the ramp inside its own surface. For the blurred whole-screen version use 08 Effect.</p>
-      <Choice
-        label="Apply To 应用于"
-        value={d.target}
-        onChange={(target) => set({ target })}
-        options={[
-          { value: "petals", label: "Petals 仅花瓣" },
-          { value: "all", label: "All 全部部件" },
-        ]}
-      />
       <Choice
         label="Color By 颜色依据"
-        value={d.input}
-        onChange={(input) => set({ input })}
+        value={input}
+        onChange={(v) => set({ input: v })}
         options={[
           { value: "facing", label: "Facing 朝向" },
-          { value: "length", label: "Length 沿长度" },
+          ...(hasLength ? [{ value: "length" as const, label: "Length 沿长度" }] : []),
           { value: "noise", label: "Noise 噪声" },
         ]}
       />
@@ -324,8 +374,10 @@ function DreamControls() {
       <Slider label="Flow 流动" value={d.flow} min={0} max={1} step={0.01} format={pct} onChange={(flow) => set({ flow })} />
       <Slider label="Speed 速度" value={d.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
       <Slider label="Edge Fade 边缘淡出" value={d.edge} min={0} max={1} step={0.01} format={pct} onChange={(edge) => set({ edge })} />
-      <Slider label="Halo 光晕大小" value={d.halo} min={0} max={0.6} step={0.01} format={pct} onChange={(halo) => set({ halo })} />
-      {d.halo > 0 && (
+      {halo && (
+        <Slider label="Halo 光晕大小" value={d.halo} min={0} max={0.6} step={0.01} format={pct} onChange={(h) => set({ halo: h })} />
+      )}
+      {halo && d.halo > 0 && (
         <>
           <ColorPicker label="Halo Color 光晕颜色" value={d.haloColor} onChange={(haloColor) => set({ haloColor })} />
           <Slider label="Halo Opacity 光晕强度" value={d.haloOpacity} min={0} max={1} step={0.01} format={pct} onChange={(haloOpacity) => set({ haloOpacity })} />
@@ -335,49 +387,23 @@ function DreamControls() {
   );
 }
 
-function LookControls() {
-  const l = usePlant((st) => st.spec.look);
+/** Scene 场景: background and ground (not part of the plant). */
+function SceneControls() {
+  const sc = usePlant((st) => st.spec.scene);
   const update = usePlant((st) => st.update);
-  const set = (patch: Partial<typeof l>) => update("look", patch);
-  const pearl = l.style === "pearl";
-  // Small picture of the painted light ball, so the player sees what the colors do.
-  const preview = useMemo(() => (pearl ? paintMatcap(l, 96).toDataURL() : ""), [pearl, l]);
+  const set = (patch: Partial<typeof sc>) => update("scene", patch);
   return (
     <>
+      <ColorPicker label="Background 背景" value={sc.background} onChange={(background) => set({ background })} />
       <Choice
-        label="Style 风格"
-        value={l.style}
-        onChange={(style) => set({ style })}
+        label="Ground 地面"
+        value={sc.ground ? "on" : "off"}
+        onChange={(v) => set({ ground: v === "on" })}
         options={[
-          { value: "natural", label: "Natural 自然光照" },
-          { value: "pearl", label: "Pearl 珍珠风格化" },
-          { value: "dream", label: "Dream 梦境材质" },
+          { value: "on", label: "Show 显示" },
+          { value: "off", label: "Hide 隐藏" },
         ]}
       />
-      {l.style === "dream" && <DreamControls />}
-      {pearl && (
-        <>
-          <img className="matcap-preview" src={preview} alt="Pearl light preview" />
-          <ColorPicker label="Highlight 高光" value={l.highlight} onChange={(highlight) => set({ highlight })} />
-          <ColorPicker label="Glow 光晕/边缘" value={l.glow} onChange={(glow) => set({ glow })} />
-          <ColorPicker label="Body 主体" value={l.body} onChange={(body) => set({ body })} />
-          <ColorPicker label="Shadow 暗部" value={l.shadow} onChange={(shadow) => set({ shadow })} />
-          <Slider label="Highlight Size 高光大小" value={l.highlightSize} min={0.05} max={0.7} step={0.01} format={pct} onChange={(highlightSize) => set({ highlightSize })} />
-          <Slider label="Softness 柔和度" value={l.softness} min={0} max={1} step={0.01} format={pct} onChange={(softness) => set({ softness })} />
-          <Slider label="Rim 边缘光" value={l.rim} min={0} max={1} step={0.01} format={pct} onChange={(rim) => set({ rim })} />
-          <Slider label="Light Angle 光源方向" value={l.lightAngle} min={0} max={360} step={1} format={deg} onChange={(lightAngle) => set({ lightAngle })} />
-          <Choice
-            label="Part Colors 部件颜色"
-            value={l.tint ? "on" : "off"}
-            onChange={(v) => set({ tint: v === "on" })}
-            options={[
-              { value: "off", label: "Off 统一珍珠色" },
-              { value: "on", label: "On 叠加部件颜色" },
-            ]}
-          />
-          <ColorPicker label="Background 背景" value={l.background} onChange={(background) => set({ background })} />
-        </>
-      )}
     </>
   );
 }
@@ -428,24 +454,29 @@ export default function Panel() {
       </div>
       <Section num="01" en="Stem" zh="茎" open>
         <StemControls />
+        <MaterialControls part="stem" />
       </Section>
       <Section num="02" en="Leaves" zh="叶">
         <LeafControls />
+        <MaterialControls part="leaves" hasLength />
       </Section>
       <Section num="03" en="Petals" zh="花瓣" open>
         <PetalControls />
+        <MaterialControls part="petals" hasLength />
       </Section>
       <Section num="04" en="Flower Center" zh="花心" open>
         <CenterControls />
+        <MaterialControls part="center" />
       </Section>
       <Section num="05" en="Sepals & Buds" zh="萼片与花蕾">
         <SepalControls />
+        <MaterialControls part="sepals" hasLength />
       </Section>
       <Section num="06" en="Architecture" zh="整体结构" open>
         <ArchitectureControls />
       </Section>
-      <Section num="07" en="Look" zh="风格" open>
-        <LookControls />
+      <Section num="07" en="Scene" zh="场景">
+        <SceneControls />
       </Section>
       <Section num="08" en="Effect" zh="后期效果" open>
         <EffectControls />

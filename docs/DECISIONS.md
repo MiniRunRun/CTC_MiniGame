@@ -13,6 +13,16 @@ Template:
 
 ---
 
+## 2026-11-04 — Materials are chosen per part and stored apart from shapes
+
+**Choice:** `spec.materials[part] = { type: natural|pearl|dream, pearl, dream }` for stem, leaves, petals, center,
+sepals. Replaces the global `look` (which had pearl for everything and dream "petals only / all").
+Stored in its own top-level group, not inside `spec.petals` etc.
+**Why:** the user wants a material choice on every component. Keeping materials out of the part specs means
+changing a material doesn't trigger geometry/layout rebuilds (those memo on the part specs).
+**Alternatives considered:** a `material` field inside each part spec (simpler to read, but every color tweak
+would rebuild the plant's geometry).
+
 ## 2026-11-04 — Two Dream versions: per-part shader and screen effect
 
 **Choice:** Keep the screen effect (08) and add a Dream *material* (07 Look) as a custom ShaderMaterial using
