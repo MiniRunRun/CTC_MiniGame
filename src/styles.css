@@ -75,3 +75,6 @@ body {
   .viewport { order: -1; height: 55vh; }
   .panel { border-right: none; border-top: 1px solid #2e3036; }
 }
+
+/* Pearl look: preview of the painted light ball (matcap) */
+.matcap-preview { width: 72px; height: 72px; justify-self: center; border-radius: 50%; }

@@ -13,6 +13,20 @@ Template:
 
 ---
 
+## 2026-11-04 — Stylized look = generated matcap; blobby shapes = SDF + MarchingCubes
+
+**Choice:** The Pearl look uses `MeshMatcapMaterial` with a matcap painted on a canvas from a few color stops
+(shadow → body → glow band → highlight → white core, plus rim). Fused petals are signed-distance pieces
+(ball, ellipsoids, tapered stalks) combined with a polynomial smooth-min and meshed by three.js `MarchingCubes`
+(its `field` is filled directly; each piece only touches grid cells in its own bounding box, for speed).
+**Why:** the user asked for stylized, not realistic. A matcap *is* "painted light", costs nothing at runtime,
+works with instancing, and every color is a slider. SDF smooth-min is the standard way to get melted joins
+(like Blender metaballs) and MarchingCubes is built into three.js — no new dependency.
+**Alternatives considered:** realistic PBR + AgX + AO (researched, the user rejected realism); a custom
+fresnel/ramp shader (more control, world-fixed light; possible later); raymarching the SDF in a shader
+(perfect smoothness but no shadows/instancing and heavy on the GPU); drei `<MarchingCubes>` balls only
+(can't make tapered stalks).
+
 ## 2026-11-04 — Abstract petals reuse the petal ring; only the single-petal geometry changes
 
 **Choice:** "Abstract" is a petal *style*. `buildPetalGeometry` returns a normalized primitive (fit into a

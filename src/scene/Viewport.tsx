@@ -8,9 +8,12 @@ import { usePlant } from "../state/store";
 export default function Viewport() {
   // Aim the camera around the upper part of the stem, where the flower is.
   const stemLength = usePlant((s) => s.spec.stem.length);
+  // Pearl look: lighting is painted into the matcap, so the ground and shadows are hidden for a clean, graphic image.
+  const look = usePlant((s) => s.spec.look);
+  const pearl = look.style === "pearl";
   return (
     <Canvas camera={{ position: [0.9, 1.45, 1.6], fov: 40 }} shadows dpr={[1, 2]}>
-      <color attach="background" args={["#1d1f24"]} />
+      <color attach="background" args={[pearl ? look.background : "#1d1f24"]} />
       {/* Sky/ground light + key light from above-front + soft fill from the other side,
           so petals read well from any angle (their undersides would otherwise go dark). */}
       <hemisphereLight args={["#ffffff", "#5a6a5a", 1.1]} />
@@ -20,11 +23,15 @@ export default function Viewport() {
       <Plant />
 
       {/* Soft shadow under the plant so it feels grounded */}
-      <ContactShadows position={[0, 0, 0]} opacity={0.5} scale={4} blur={2.5} far={2} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]}>
-        <circleGeometry args={[1.5, 64]} />
-        <meshStandardMaterial color="#2c3a2c" />
-      </mesh>
+      {!pearl && (
+        <>
+          <ContactShadows position={[0, 0, 0]} opacity={0.5} scale={4} blur={2.5} far={2} />
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.001, 0]}>
+            <circleGeometry args={[1.5, 64]} />
+            <meshStandardMaterial color="#2c3a2c" />
+          </mesh>
+        </>
+      )}
 
       <OrbitControls target={[0, stemLength * 0.9, 0]} minDistance={0.25} maxDistance={6} enablePan={false} />
     </Canvas>

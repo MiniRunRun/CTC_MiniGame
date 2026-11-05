@@ -71,6 +71,14 @@ small JSON file, which the garden can reuse later.
   curvature, normals recomputed (flat for gem/cube, welded smooth for the rest), and vertex-colored between
   `color` and `color2` by facing (normal.y) or by length, optionally repeated as bands. `petalPlacements` stacks
   abstract layers as identical rings offset by `layerGap`.
+- **Fused abstract flower (`src/plant/fused.ts`):** `petals.join = "fused"`. Signed distance pieces — a center
+  ball, an ellipsoid per petal (same ring as abstract petals, radius + `stalk`), a tapered stalk from the center to
+  each petal — are smooth-min blended (`blend` → radius) into a `detail`³ grid, each piece only over its bounding
+  box. three.js `MarchingCubes` (field = −distance, isolation 0) makes the triangles, which are copied into a plain
+  geometry with vertex colors (`color` near the center → `color2` on the petals) and instanced on `parts.heads`.
+- **Look (`src/scene/matcap.ts`, `Plant.tsx`):** `look.style = "pearl"` swaps every material for
+  `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light; shadow → body → glow →
+  highlight → white core, glow on the rim). `look.tint` multiplies by part colors. Viewport hides ground/shadows.
 - **Drawn shapes (`src/plant/profile.ts`, `src/ui/DrawPad.tsx`):** each shape group has a "Drawn 手绘" option.
   Picking it opens a 240×150 pad showing the current drawn silhouette (a starter shape until the player draws).
   Base = bottom of the drawing, tip = top; its height = the part's length. `strokesToProfile(strokes, axisX)`

@@ -49,6 +49,10 @@ These were not in the user's list. They were added because the 3D needs them; re
 - Petals: **Style 风格 Natural / Abstract 抽象几何** (user request, from a Blender Geometry Nodes reference).
   Abstract swaps each petal for a primitive (sphere, gem, cube, cone, torus, capsule) with Width, Thickness,
   Layer Gap, two colors, Gradient (top↔under / base→tip) and Bands. Shape is hidden in abstract mode.
+- Petals (abstract): **Join 连接 Separate / Fused 融合** — fused melts round petals and stalks into one blobby
+  shape (Stalk Length, Stalk Width, Blend, Detail). From the user's pearl reference image.
+- **07 Look 风格**: Natural / **Pearl 珍珠风格化** stylized "painted light" (Highlight, Glow, Body, Shadow colors,
+  Highlight Size, Softness, Rim, Light Angle, Part Colors on/off, Background).
 - A **Reset 重置** button.
 - Milestone 3: **Color** for leaves and sepals/buds; **Flowers 花朵数量** (3–30) for Spike and Cluster.
   Stem **Branching 分枝数量** (1–6) only has an effect in the Branched architecture.

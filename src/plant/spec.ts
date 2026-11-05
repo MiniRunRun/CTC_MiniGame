@@ -35,6 +35,8 @@ export type PetalStyle = "natural" | "abstract";
 export type Primitive = "sphere" | "gem" | "cube" | "cone" | "torus" | "capsule";
 /** How the two abstract colors blend: along the petal (base → tip) or by facing (top → underside). */
 export type GradientMode = "length" | "facing";
+/** separate = one primitive per petal; fused = petals + stalks melted into one blobby shape (see fused.ts). */
+export type PetalJoin = "separate" | "fused";
 
 export interface PetalSpec {
   shape: PetalShape;
@@ -54,6 +56,12 @@ export interface PetalSpec {
   gradient: GradientMode;
   bands: number; // how many times the gradient repeats, 1 – 6 (more = striped)
   color2: string; // second gradient color (the first is `color`)
+  // Fused (融合) — only when style = "abstract" and join = "fused".
+  join: PetalJoin;
+  stalk: number; // stalk length from the center to each petal, 0 – 0.3 m
+  stalkWidth: number; // stalk radius at the center, 0.002 – 0.04 m (tapers toward the petal)
+  blend: number; // how round the joins are, 0 (sharp) – 1 (very melted)
+  detail: number; // mesh resolution, 32 – 96 (higher = smoother, slower)
 }
 
 export type CenterType = "disc" | "column" | "stamens";
@@ -86,6 +94,24 @@ export interface ArchitectureSpec {
   flowers: number; // flowers in a spike or cluster, 3 – 30
 }
 
+/** natural = lit like a real object; pearl = stylized "painted light" from a generated matcap (see scene/matcap.ts). */
+export type LookStyle = "natural" | "pearl";
+
+export interface LookSpec {
+  style: LookStyle;
+  // Pearl ramp, from the dark side of a ball to its highlight:
+  shadow: string; // side away from the light
+  body: string; // main body
+  glow: string; // band around the highlight and the rim
+  highlight: string; // the highlight spot (its center fades to white)
+  highlightSize: number; // 0.05 – 0.7
+  softness: number; // 0 (hard, toon-like edges) – 1 (smooth)
+  rim: number; // how much the glow color shows on the edges, 0 – 1
+  lightAngle: number; // where the highlight sits, 0 – 360° (90 = top)
+  tint: boolean; // multiply by each part's own colors
+  background: string;
+}
+
 export interface PlantSpec {
   stem: StemSpec;
   leaves: LeafSpec;
@@ -93,6 +119,7 @@ export interface PlantSpec {
   center: CenterSpec;
   sepals: SepalSpec;
   architecture: ArchitectureSpec;
+  look: LookSpec;
 }
 
 export const DEFAULT_SPEC: PlantSpec = {
@@ -135,6 +162,11 @@ export const DEFAULT_SPEC: PlantSpec = {
     gradient: "facing",
     bands: 2,
     color2: "#5468e0",
+    join: "separate",
+    stalk: 0.12,
+    stalkWidth: 0.012,
+    blend: 0.5,
+    detail: 64,
   },
   center: {
     type: "disc",
@@ -155,5 +187,19 @@ export const DEFAULT_SPEC: PlantSpec = {
   architecture: {
     mode: "single",
     flowers: 12,
+  },
+  // Pearl defaults are picked from the user's reference image (lavender-pink highlight, olive glow, off-white body).
+  look: {
+    style: "natural",
+    shadow: "#8f88a6",
+    body: "#ece6dd",
+    glow: "#b5a630",
+    highlight: "#e3b6f2",
+    highlightSize: 0.35,
+    softness: 0.55,
+    rim: 0.45,
+    lightAngle: 100,
+    tint: false,
+    background: "#000000",
   },
 };

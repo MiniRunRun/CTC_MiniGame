@@ -24,7 +24,7 @@ function placementMatrix(p: Placement): THREE.Matrix4 {
 }
 
 /** Local matrix of one blade in a ring: turn around the axis, move out to the radius, tilt up, scale. */
-function ringMatrix(r: RingPlacement): THREE.Matrix4 {
+export function ringMatrix(r: RingPlacement): THREE.Matrix4 {
   return new THREE.Matrix4()
     .makeRotationAxis(Y, r.angle)
     .multiply(new THREE.Matrix4().makeTranslation(r.radius, r.height, 0))

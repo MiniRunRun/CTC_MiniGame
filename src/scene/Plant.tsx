@@ -12,6 +12,9 @@ import { buildPetalGeometry } from "../plant/petal";
 import { buildCenter } from "../plant/center";
 import { buildLeafGeometry } from "../plant/leaf";
 import { buildBudGeometry, buildSepalGeometry } from "../plant/sepal";
+import { buildFusedFlower } from "../plant/fused";
+import { makeMatcapTexture } from "./matcap";
+import type { LookSpec } from "../plant/spec";
 
 /** Free GPU memory for geometries/materials we no longer show. */
 function useDisposeOnChange(items: { dispose: () => void }[]) {
@@ -30,7 +33,8 @@ function Instances({ geometry, material, matrices }: {
     if (!mesh) return;
     matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
     mesh.instanceMatrix.needsUpdate = true;
-  }, [matrices, geometry]);
+    // geometry/material are constructor args: changing them makes a new mesh that needs its matrices again.
+  }, [matrices, geometry, material]);
   if (matrices.length === 0) return null;
   return (
     <instancedMesh
@@ -44,8 +48,25 @@ function Instances({ geometry, material, matrices }: {
   );
 }
 
-const bladeMaterial = () =>
-  new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.55 });
+/**
+ * One material for a part. Natural look: lit by the scene lights. Pearl look: matcap ("painted light"),
+ * tinted by the part's own colors only if look.tint is on.
+ * `vertexColors` = the part's colors live in the geometry; otherwise `color` is used.
+ */
+function partMaterial(look: LookSpec, matcap: THREE.Texture | null, o: {
+  vertexColors?: boolean; color?: string; doubleSide?: boolean; roughness: number;
+}): THREE.Material {
+  const side = o.doubleSide ? THREE.DoubleSide : THREE.FrontSide;
+  if (look.style === "pearl" && matcap) {
+    return new THREE.MeshMatcapMaterial({
+      matcap,
+      side,
+      vertexColors: look.tint && !!o.vertexColors,
+      color: look.tint && o.color ? o.color : "#ffffff",
+    });
+  }
+  return new THREE.MeshStandardMaterial({ vertexColors: !!o.vertexColors, color: o.color ?? "#ffffff", side, roughness: o.roughness });
+}
 
 export default function Plant() {
   const spec = usePlant((s) => s.spec);
@@ -67,14 +88,23 @@ export default function Plant() {
   const bud = useMemo(() => buildBudGeometry(spec.sepals, spec.petals), [spec.sepals, spec.petals]);
   const receptacle = useMemo(() => new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10), [spec.stem.thickness]);
   const center = useMemo(() => buildCenter(spec.center), [spec.center]);
+  // Fused abstract petals: one melted shape per flower, drawn on every flower head instead of single petals.
+  const fusedOn = spec.petals.style === "abstract" && spec.petals.join === "fused";
+  const fused = useMemo(
+    () => (fusedOn ? buildFusedFlower(spec.petals, spec.center.size * 0.35, spec.stem.thickness * 1.6) : null),
+    [fusedOn, spec.petals, spec.center.size, spec.stem.thickness],
+  );
 
-  // Materials
-  const stemMat = useMemo(() => new THREE.MeshStandardMaterial({ color: spec.stem.color, roughness: 0.7 }), [spec.stem.color]);
-  const bladeMat = useMemo(bladeMaterial, []); // petals, sepals, leaves: colors come from the geometry
-  const budMat = useMemo(() => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6 }), []);
+  // Materials (rebuilt when the look changes)
+  const look = spec.look;
+  const matcap = useMemo(() => (look.style === "pearl" ? makeMatcapTexture(look) : null), [look]);
+  const stemMat = useMemo(() => partMaterial(look, matcap, { color: spec.stem.color, roughness: 0.7 }), [look, matcap, spec.stem.color]);
+  // petals, sepals, leaves: colors come from the geometry
+  const bladeMat = useMemo(() => partMaterial(look, matcap, { vertexColors: true, doubleSide: true, roughness: 0.55 }), [look, matcap]);
+  const budMat = useMemo(() => partMaterial(look, matcap, { vertexColors: true, roughness: 0.6 }), [look, matcap]);
   const centerMats = useMemo(
-    () => center.map((c) => new THREE.MeshStandardMaterial({ color: c.color, roughness: 0.8 })),
-    [center],
+    () => center.map((c) => partMaterial(look, matcap, { color: c.color, roughness: 0.8 })),
+    [center, look, matcap],
   );
 
   useDisposeOnChange(useMemo(() => [layout.stemGeometry], [layout]));
@@ -86,6 +116,8 @@ export default function Plant() {
   useDisposeOnChange(useMemo(() => [stemMat], [stemMat]));
   useDisposeOnChange(useMemo(() => [...center.map((c) => c.geometry), ...centerMats], [center, centerMats]));
   useDisposeOnChange(useMemo(() => [bladeMat, budMat], [bladeMat, budMat]));
+  useDisposeOnChange(useMemo(() => (fused ? [fused] : []), [fused]));
+  useDisposeOnChange(useMemo(() => (matcap ? [matcap] : []), [matcap]));
 
   return (
     <group>
@@ -93,7 +125,11 @@ export default function Plant() {
       <Instances geometry={leaf} material={bladeMat} matrices={parts.leaves} />
       <Instances geometry={receptacle} material={stemMat} matrices={parts.receptacles} />
       <Instances geometry={sepal} material={bladeMat} matrices={parts.sepals} />
-      <Instances geometry={petal} material={bladeMat} matrices={parts.petals} />
+      {fused ? (
+        <Instances geometry={fused} material={bladeMat} matrices={parts.heads} />
+      ) : (
+        <Instances geometry={petal} material={bladeMat} matrices={parts.petals} />
+      )}
       {center.map((c, i) => (
         <Instances key={i} geometry={c.geometry} material={centerMats[i]} matrices={parts.heads} />
       ))}

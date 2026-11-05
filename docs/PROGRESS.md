@@ -13,6 +13,33 @@ Template:
 
 ---
 
+## 2026-11-04 — Pearl look + fused (blobby) abstract petals
+
+**Done:**
+- User wanted a *stylized, not realistic* look matching a reference image: pearl-like balls (lavender-pink
+  highlight, olive-yellow glow/rim, off-white body) joined to a center by smooth, melted stalks, on black.
+- **07 Look 风格** section: Natural 自然光照 / **Pearl 珍珠风格化**. Pearl paints the light into a matcap
+  (`src/scene/matcap.ts`) with Highlight / Glow / Body / Shadow colors, Highlight Size, Softness, Rim,
+  Light Angle, Part Colors on/off and Background. Ground and shadows are hidden in Pearl. A 72 px preview ball
+  shows the current matcap.
+- Petals → Abstract → **Join 连接: Separate / Fused 融合**. Fused builds one melted mesh per flower
+  (`src/plant/fused.ts`): center ball + one ellipsoid per petal + tapered stalks, smooth-min blended, meshed
+  with three.js MarchingCubes, then instanced on every flower head. Sliders: Stalk Length, Stalk Width,
+  Blend 融合度, Detail 精度 (32–96).
+- Bug fixed on the way: `Instances` now re-applies matrices when the material changes (the mesh is rebuilt).
+- Tested: 7 fused petals + Pearl closely matches the reference image (top view). Toggled every new option,
+  spike architecture, part colors on/off, natural ↔ pearl. No console errors after a fresh load.
+  Rebuild times in the (throttled) preview browser: detail 64 ≈ 50–130 ms, detail 96 with 72 petals ≈ 400 ms.
+
+**Not finished / known issues:**
+- Fused uses rounded ellipsoids only (the Primitive choice is hidden) and ignores petal curvature.
+- Fused flowers on a spike all use the fully open shape (no younger, closed flowers).
+- High Detail + many petals lags while dragging sliders; a low-res-while-dragging mode could fix that.
+- Pearl light follows the camera (that's how matcaps work); a world-fixed light would need a custom shader.
+- No bloom/glow post-processing yet.
+
+**Next:** user feedback on the pearl look; maybe bloom, more matcap presets, fused leaves/center.
+
 ## 2026-11-04 — Abstract petals (抽象几何)
 
 **Done:**

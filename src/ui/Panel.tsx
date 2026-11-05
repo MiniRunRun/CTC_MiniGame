@@ -1,12 +1,13 @@
 // Slider panel: one collapsible section per flower part (see docs/GAME_DESIGN.md).
 // Every section has working controls. Shape groups have a "Drawn 手绘" option that opens a drawing pad.
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { usePlant } from "../state/store";
 import { Choice, ColorPicker, Slider, cm, deg, mm, pct } from "./controls";
 import DrawPad from "./DrawPad";
 import { petalWidth } from "../plant/petal";
 import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
+import { paintMatcap } from "../scene/matcap";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -177,6 +178,24 @@ function PetalControls() {
       {abstract ? (
         <>
           <Choice
+            label="Join 连接"
+            value={p.join}
+            onChange={(join) => set({ join })}
+            options={[
+              { value: "separate", label: "Separate 分开" },
+              { value: "fused", label: "Fused 融合" },
+            ]}
+          />
+          {p.join === "fused" ? (
+            <>
+              <p className="hint">Fused melts rounded petals and stalks into one smooth shape.</p>
+              <Slider label="Stalk Length 花梗长度" value={p.stalk} min={0} max={0.3} step={0.005} format={cm} onChange={(stalk) => set({ stalk })} />
+              <Slider label="Stalk Width 花梗粗细" value={p.stalkWidth} min={0.002} max={0.04} step={0.001} format={mm} onChange={(stalkWidth) => set({ stalkWidth })} />
+              <Slider label="Blend 融合度" value={p.blend} min={0} max={1} step={0.01} format={pct} onChange={(blend) => set({ blend })} />
+              <Slider label="Detail 精度" value={p.detail} min={32} max={96} step={8} onChange={(detail) => set({ detail })} />
+            </>
+          ) : (
+          <Choice
             label="Primitive 几何体"
             value={p.primitive}
             onChange={(primitive) => set({ primitive })}
@@ -189,6 +208,7 @@ function PetalControls() {
               { value: "capsule", label: "Capsule 胶囊" },
             ]}
           />
+          )}
           <Slider label="Width 宽度" value={p.width} min={0.1} max={1.5} step={0.01} format={pct} onChange={(width) => set({ width })} />
           <Slider label="Thickness 厚度" value={p.thickness} min={0.05} max={1.5} step={0.01} format={pct} onChange={(thickness) => set({ thickness })} />
         </>
@@ -260,6 +280,51 @@ function CenterControls() {
   );
 }
 
+function LookControls() {
+  const l = usePlant((st) => st.spec.look);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<typeof l>) => update("look", patch);
+  const pearl = l.style === "pearl";
+  // Small picture of the painted light ball, so the player sees what the colors do.
+  const preview = useMemo(() => (pearl ? paintMatcap(l, 96).toDataURL() : ""), [pearl, l]);
+  return (
+    <>
+      <Choice
+        label="Style 风格"
+        value={l.style}
+        onChange={(style) => set({ style })}
+        options={[
+          { value: "natural", label: "Natural 自然光照" },
+          { value: "pearl", label: "Pearl 珍珠风格化" },
+        ]}
+      />
+      {pearl && (
+        <>
+          <img className="matcap-preview" src={preview} alt="Pearl light preview" />
+          <ColorPicker label="Highlight 高光" value={l.highlight} onChange={(highlight) => set({ highlight })} />
+          <ColorPicker label="Glow 光晕/边缘" value={l.glow} onChange={(glow) => set({ glow })} />
+          <ColorPicker label="Body 主体" value={l.body} onChange={(body) => set({ body })} />
+          <ColorPicker label="Shadow 暗部" value={l.shadow} onChange={(shadow) => set({ shadow })} />
+          <Slider label="Highlight Size 高光大小" value={l.highlightSize} min={0.05} max={0.7} step={0.01} format={pct} onChange={(highlightSize) => set({ highlightSize })} />
+          <Slider label="Softness 柔和度" value={l.softness} min={0} max={1} step={0.01} format={pct} onChange={(softness) => set({ softness })} />
+          <Slider label="Rim 边缘光" value={l.rim} min={0} max={1} step={0.01} format={pct} onChange={(rim) => set({ rim })} />
+          <Slider label="Light Angle 光源方向" value={l.lightAngle} min={0} max={360} step={1} format={deg} onChange={(lightAngle) => set({ lightAngle })} />
+          <Choice
+            label="Part Colors 部件颜色"
+            value={l.tint ? "on" : "off"}
+            onChange={(v) => set({ tint: v === "on" })}
+            options={[
+              { value: "off", label: "Off 统一珍珠色" },
+              { value: "on", label: "On 叠加部件颜色" },
+            ]}
+          />
+          <ColorPicker label="Background 背景" value={l.background} onChange={(background) => set({ background })} />
+        </>
+      )}
+    </>
+  );
+}
+
 export default function Panel() {
   const reset = usePlant((st) => st.reset);
   return (
@@ -285,6 +350,9 @@ export default function Panel() {
       </Section>
       <Section num="06" en="Architecture" zh="整体结构" open>
         <ArchitectureControls />
+      </Section>
+      <Section num="07" en="Look" zh="风格" open>
+        <LookControls />
       </Section>
     </aside>
   );
