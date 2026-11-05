@@ -13,6 +13,15 @@ Template:
 
 ---
 
+## 2026-11-04 — Dream effect = blur + gradient map with three.js EffectComposer
+
+**Choice:** A screen pass chain (RenderPass → 6 Gaussian blur passes → one gradient-map shader that writes sRGB
+straight to the screen). Mounted only when the effect is on; it takes over rendering via `useFrame(…, 1)`.
+**Why:** the reference look comes from blurring the image and recoloring by brightness (halos appear where
+blurred shapes fade into the background). EffectComposer ships with three, so no new dependency.
+**Alternatives considered:** `@react-three/postprocessing` (nice API but a new dependency for two custom
+shaders); doing it in the materials (can't blur across objects).
+
 ## 2026-11-04 — Stylized look = generated matcap; blobby shapes = SDF + MarchingCubes
 
 **Choice:** The Pearl look uses `MeshMatcapMaterial` with a matcap painted on a canvas from a few color stops

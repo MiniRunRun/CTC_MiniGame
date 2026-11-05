@@ -13,6 +13,23 @@ Template:
 
 ---
 
+## 2026-11-04 — Dream screen effect (梦境)
+
+**Done:**
+- User shared a reference: melted, blurred shapes in lavender-grey with pink halos fading to white, olive bands,
+  and rainbow fringes. This is a post-process, not a material.
+- New **08 Effect 后期效果** section: None / **Dream 梦境**. `src/scene/Effects.tsx` uses three.js'
+  EffectComposer: render → 3 rounds of separable Gaussian blur → gradient map (brightness → 5-color ramp,
+  optional ping-pong Repeat for contour rings) with color fringes and grain. Sliders: Blur, Contrast, Offset,
+  Repeat, Fringe, Grain, plus 5 ramp colors and a ramp preview strip.
+- Works with both Natural and Pearl looks. Tested: on/off, extreme values, no console errors.
+
+**Not finished / known issues:**
+- Ramp stops are evenly spaced (no per-stop position sliders yet).
+- The effect reads only brightness, so very different colors with the same brightness get the same ramp color.
+
+**Next:** user feedback; maybe ramp presets, stop positions, depth-based blur.
+
 ## 2026-11-04 — Pearl look + fused (blobby) abstract petals
 
 **Done:**

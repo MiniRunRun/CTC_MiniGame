@@ -325,6 +325,42 @@ function LookControls() {
   );
 }
 
+function EffectControls() {
+  const e = usePlant((st) => st.spec.effect);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<typeof e>) => update("effect", patch);
+  const setRamp = (i: number, color: string) => set({ ramp: e.ramp.map((c, k) => (k === i ? color : c)) });
+  const rampNames = ["1 暗部 dark", "2", "3", "4", "5 亮部 bright"];
+  return (
+    <>
+      <Choice
+        label="Effect 后期效果"
+        value={e.mode}
+        onChange={(mode) => set({ mode })}
+        options={[
+          { value: "none", label: "None 无" },
+          { value: "dream", label: "Dream 梦境" },
+        ]}
+      />
+      {e.mode === "dream" && (
+        <>
+          <p className="hint">Blurs the picture, then recolors it by brightness with the ramp below.</p>
+          <div className="ramp-preview" style={{ background: `linear-gradient(90deg, ${e.ramp.join(", ")})` }} />
+          {e.ramp.map((c, i) => (
+            <ColorPicker key={i} label={`Ramp ${rampNames[i]}`} value={c} onChange={(v) => setRamp(i, v)} />
+          ))}
+          <Slider label="Blur 模糊" value={e.blur} min={0} max={1} step={0.01} format={pct} onChange={(blur) => set({ blur })} />
+          <Slider label="Contrast 对比度" value={e.contrast} min={0.5} max={3} step={0.05} format={(v) => v.toFixed(2)} onChange={(contrast) => set({ contrast })} />
+          <Slider label="Offset 偏移" value={e.offset} min={-0.5} max={0.5} step={0.01} format={(v) => v.toFixed(2)} onChange={(offset) => set({ offset })} />
+          <Slider label="Repeat 色带重复" value={e.repeat} min={1} max={4} step={0.1} format={(v) => v.toFixed(1)} onChange={(repeat) => set({ repeat })} />
+          <Slider label="Fringe 色散" value={e.aberration} min={0} max={1} step={0.01} format={pct} onChange={(aberration) => set({ aberration })} />
+          <Slider label="Grain 颗粒" value={e.grain} min={0} max={1} step={0.01} format={pct} onChange={(grain) => set({ grain })} />
+        </>
+      )}
+    </>
+  );
+}
+
 export default function Panel() {
   const reset = usePlant((st) => st.reset);
   return (
@@ -353,6 +389,9 @@ export default function Panel() {
       </Section>
       <Section num="07" en="Look" zh="风格" open>
         <LookControls />
+      </Section>
+      <Section num="08" en="Effect" zh="后期效果" open>
+        <EffectControls />
       </Section>
     </aside>
   );

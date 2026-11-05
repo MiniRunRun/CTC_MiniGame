@@ -79,6 +79,10 @@ small JSON file, which the garden can reuse later.
 - **Look (`src/scene/matcap.ts`, `Plant.tsx`):** `look.style = "pearl"` swaps every material for
   `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light; shadow → body → glow →
   highlight → white core, glow on the rim). `look.tint` multiplies by part colors. Viewport hides ground/shadows.
+- **Screen effects (`src/scene/Effects.tsx`):** when `effect.mode = "dream"`, an EffectComposer renders the scene
+  to a texture, blurs it (separable 9-tap Gaussian, 3 horizontal+vertical rounds, radius ∝ screen height ×
+  `blur`), then maps perceptual brightness through `contrast`/`offset`/`repeat` onto the 5 `ramp` colors
+  (sRGB uniforms), with red/blue sampled at offsets for fringes, plus grain. Output is sRGB, no tone mapping.
 - **Drawn shapes (`src/plant/profile.ts`, `src/ui/DrawPad.tsx`):** each shape group has a "Drawn 手绘" option.
   Picking it opens a 240×150 pad showing the current drawn silhouette (a starter shape until the player draws).
   Base = bottom of the drawing, tip = top; its height = the part's length. `strokesToProfile(strokes, axisX)`

@@ -3,6 +3,7 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, ContactShadows } from "@react-three/drei";
 import Plant from "./Plant";
+import Effects from "./Effects";
 import { usePlant } from "../state/store";
 
 export default function Viewport() {
@@ -11,6 +12,7 @@ export default function Viewport() {
   // Pearl look: lighting is painted into the matcap, so the ground and shadows are hidden for a clean, graphic image.
   const look = usePlant((s) => s.spec.look);
   const pearl = look.style === "pearl";
+  const effectOn = usePlant((s) => s.spec.effect.mode !== "none");
   return (
     <Canvas camera={{ position: [0.9, 1.45, 1.6], fov: 40 }} shadows dpr={[1, 2]}>
       <color attach="background" args={[pearl ? look.background : "#1d1f24"]} />
@@ -32,6 +34,8 @@ export default function Viewport() {
           </mesh>
         </>
       )}
+
+      {effectOn && <Effects />}
 
       <OrbitControls target={[0, stemLength * 0.9, 0]} minDistance={0.25} maxDistance={6} enablePan={false} />
     </Canvas>

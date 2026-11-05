@@ -112,6 +112,20 @@ export interface LookSpec {
   background: string;
 }
 
+/** Screen effect applied after the 3D is drawn (see scene/Effects.tsx). */
+export type EffectMode = "none" | "dream";
+
+export interface EffectSpec {
+  mode: EffectMode; // none / dream 梦境: blur + gradient map, like a blurred thermal photo
+  blur: number; // 0 – 1, how soft/melted the image gets
+  ramp: string[]; // 5 colors, dark → bright input brightness
+  contrast: number; // 0.5 – 3, stretches the brightness before the ramp
+  offset: number; // -0.5 – 0.5, slides the brightness along the ramp
+  repeat: number; // 1 – 4, the ramp repeats → contour rings
+  aberration: number; // 0 – 1, colored fringes at edges
+  grain: number; // 0 – 1, film noise
+}
+
 export interface PlantSpec {
   stem: StemSpec;
   leaves: LeafSpec;
@@ -120,6 +134,7 @@ export interface PlantSpec {
   sepals: SepalSpec;
   architecture: ArchitectureSpec;
   look: LookSpec;
+  effect: EffectSpec;
 }
 
 export const DEFAULT_SPEC: PlantSpec = {
@@ -201,5 +216,16 @@ export const DEFAULT_SPEC: PlantSpec = {
     lightAngle: 100,
     tint: false,
     background: "#000000",
+  },
+  // Dream defaults are picked from the user's reference image: white background, pink halos, olive, lavender-grey shapes.
+  effect: {
+    mode: "none",
+    blur: 0.5,
+    ramp: ["#f1f3f6", "#f0b3bd", "#b3a547", "#c9bfe6", "#a9adc2"],
+    contrast: 1.4,
+    offset: 0,
+    repeat: 1,
+    aberration: 0.35,
+    grain: 0.15,
   },
 };

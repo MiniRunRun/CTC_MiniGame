@@ -53,6 +53,8 @@ These were not in the user's list. They were added because the 3D needs them; re
   shape (Stalk Length, Stalk Width, Blend, Detail). From the user's pearl reference image.
 - **07 Look 风格**: Natural / **Pearl 珍珠风格化** stylized "painted light" (Highlight, Glow, Body, Shadow colors,
   Highlight Size, Softness, Rim, Light Angle, Part Colors on/off, Background).
+- **08 Effect 后期效果**: None / **Dream 梦境** — blur + 5-color gradient map (Blur, Contrast, Offset, Repeat,
+  Fringe, Grain). From the user's blurred, pink-haloed reference image.
 - A **Reset 重置** button.
 - Milestone 3: **Color** for leaves and sepals/buds; **Flowers 花朵数量** (3–30) for Spike and Cluster.
   Stem **Branching 分枝数量** (1–6) only has an effect in the Branched architecture.
