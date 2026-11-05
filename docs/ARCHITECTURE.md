@@ -72,9 +72,10 @@ small JSON file, which the garden can reuse later.
   [x blades, y stem/bud/center/receptacle], or grid cell center; size = slot·scale·(1, thickness, width) ×
   variation; random tilt) → pieces: unit primitive templates (normalized to −0.5…0.5, cached; cube uses 8×8×8
   segments only for palette gradients) written into one geometry; fused: `ellipsoidPiece` per piece → `melt()`
-  (k = blend·avg size·0.8) with corner colors blended from nearby pieces (1/d⁴, far pieces skipped). Colors
-  (`colorBy`): part = average source vertex color per piece; along / facing = color→color2 with `pingpong(bands)`;
-  piece = `sampleRamp(palette, wrap01(start + gradient·local·dir·1.6))`. Presets: `buildPreset()` in spec.ts.
+  (k = blend·avg size·0.8) with corner colors blended from nearby pieces (1/d⁴, far pieces skipped). Per corner
+  it writes data, not ramp colors: `color` = the part's own color there (average source vertex color per piece),
+  `aAlong` (0 base → 1 tip, by the part's axis), `aPiece` = (piece's random start, local·dir·1.6 across it).
+  `fine` (Color by Piece) → 8×8×8-segment cubes. Presets: `buildPreset()` in spec.ts → { build, color }.
   `Plant.tsx` wraps every geometry memo with it and frees the smooth source (not the stem's, owned by the layout);
   rebuilt stem/center switch their materials to vertex colors.
 - **Fused (`src/plant/fused.ts`):** SDF pieces (`ballPiece`, `ellipsoidPiece`, `stalkPiece`) smooth-min blended on
@@ -92,10 +93,17 @@ small JSON file, which the garden can reuse later.
   optional halo instances). `spec.scene` holds background color and ground on/off.
 - **Pearl (`src/scene/matcap.ts`):** `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light;
   shadow → body → glow → highlight → white core, glow on the rim). `pearl.tint` multiplies by part colors.
+- **Part color (`spec.colors[part]`, `src/scene/partColor.ts`):** `{ by, ramp (2–5), repeat, spread }`. Geometry
+  carries `aAlong` (blade.ts writes v; build.ts / fused.ts write theirs; `ensureAlong(g, axis)` in build.ts fills
+  the rest — Plant.tsx calls it on every geometry) and `aPiece`. `glsl.ts PART_COLOR` = uniforms uPcRamp[5], uPcN,
+  uPcBy, uPcRepeat, uPcSpread, uPcScale + `partRaw(along, piece, objN, objP, facing)` + `partColor(raw)`
+  (ping-pong repeat, `rampN`). Natural / tinted Pearl: `applyPartColor()` patches three's vertex shader (after
+  `project_vertex`) to set vColor, turns vertexColors on and the base color white; by = part → no patch.
+  Patches stack via `shaderPatch.ts patchShader()` (chained onBeforeCompile + joined cache keys), which
+  animation.ts also uses. Glitch ignores it.
 - **Dream material (`src/scene/dreamMaterial.ts`):** ShaderMaterial built from three chunks
-  (`beginnormal/defaultnormal/begin/project_vertex`, so InstancedMesh works). t = 1−|n·v| (facing), x/len
-  (length; radial for fused) or 3D value noise; + flow noise moving with time×speed; ping-pong repeat; r/g/b
-  sampled at t±fringe. Edge Fade → alpha (transparent, no depth write). Halo: same geometry/matrices, vertices
+  (`beginnormal/defaultnormal/begin/project_vertex`, so InstancedMesh works). Uses `partColorUniforms()`; t =
+  `partRaw` per pixel (by = part → facing) + flow noise moving with time; r/g/b = `partColor(t ± fringe)`. Edge Fade → alpha (transparent, no depth write). Halo: same geometry/matrices, vertices
   scaled around the geometry's bbox center by 1+halo, alpha = facing²×opacity, renderOrder 2. `uTime` (pattern
   motion) comes from the part's animation, see below.
 - **Glitch material (`src/scene/glitchMaterial.ts`):** ShaderMaterial, same chunks. Light = fixed view-space

@@ -6,7 +6,7 @@
 //   glitch  故障 → the screen is cut into horizontal bands; some bands jump sideways (tearing), in steps
 //   pattern 图案流动 → the material's own pattern moves (dream bands flow, glitch blocks/grain re-roll);
 //                  handled in Plant.tsx by driving the material's uTime, not here
-// How: material.onBeforeCompile injects a few lines into three.js' shader chunks (`#include <common>`,
+// How: patchShader (material.onBeforeCompile) injects a few lines into three.js' shader chunks (`#include <common>`,
 // `<begin_vertex>`, `<project_vertex>`), which exist in MeshStandardMaterial, MeshMatcapMaterial and our own
 // ShaderMaterials alike. Each copy (instance) gets its own phase from its position, so petals don't move in sync.
 // Two things act on the whole plant (PlantMotion), on top of each part's own motion:
@@ -20,6 +20,7 @@
 import * as THREE from "three";
 import type { AnimationSpec, PlantAnimationSpec } from "../plant/spec";
 import { HASH } from "./glsl";
+import { patchShader } from "./shaderPatch";
 
 /** How the part is shaped, which decides how sway bends it. */
 export type AnimKind = "stem" | "blade" | "blob";
@@ -179,9 +180,9 @@ export function applyAnimation(
   material.userData.plantSpeed = plant.stemSpeed;
   material.userData.wholeSpeed = plant.whole.speed;
   material.userData.anim = u;
-  const prev = material.onBeforeCompile.bind(material);
-  material.onBeforeCompile = (shader, renderer) => {
-    prev(shader, renderer);
+  // Different code per kind / plant sway / glitch on-off → different compiled program (key).
+  const key = `anim-${kind}-${followStem ? 1 : 0}${stemGlitch ? 1 : 0}-${glitch > 0 ? 1 : 0}-${whole ? 1 : 0}`;
+  patchShader(material, key, (shader) => {
     Object.assign(shader.uniforms, u);
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", `#include <common>\n#define ANIM_KIND ${KIND[kind]}\n${followStem ? "#define ANIM_FOLLOW\n" : ""}${stemGlitch ? "#define ANIM_STEM_GLITCH\n" : ""}${HEADER}`)
@@ -190,9 +191,5 @@ export function applyAnimation(
         "#include <project_vertex>",
         `#include <project_vertex>\n${followStem ? FOLLOW : ""}\n${glitch > 0 ? TEAR_PART : ""}\n${whole ? TEAR_WHOLE : ""}`,
       );
-  };
-  // Different code per kind / plant sway / glitch on-off → different compiled program.
-  const key = `anim-${kind}-${followStem ? 1 : 0}${stemGlitch ? 1 : 0}-${glitch > 0 ? 1 : 0}-${whole ? 1 : 0}`;
-  material.customProgramCacheKey = () => key;
-  material.needsUpdate = true;
+  });
 }

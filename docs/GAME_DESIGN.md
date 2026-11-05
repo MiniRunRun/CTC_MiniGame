@@ -58,16 +58,19 @@ These were not in the user's list. They were added because the 3D needs them; re
     Align 排列 (Follow 顺着走势 / Grid 网格).
   - Fused: the same pieces as ellipsoids melted into one smooth shape (Blend 融合度, Detail 精度). Petals can also
     fuse the **Whole Flower 整朵花** (all petals + a stalk to each + a center ball; Stalk Length / Width).
-  - Color By 颜色: Part 部件色 (the part's own colors) / Along 沿长度 or Facing 朝向 (Color → Color 2, Bands) /
-    Piece 每块色板 (each piece its own gradient from a 5-color Palette, Gradient 0 = flat color per piece).
-  - **Preset 预设** buttons fill in the former separate features: **Abstract 抽象** (1 squashed sphere per part,
-    top/underside stripes — the old abstract petals), **Blocks 积木** (many small cubes, gradient along the
-    part), **Cubes 立方体** (few big tilted boxes with palette gradients, from the user's cube references).
-- **Material 材质** (still images, no motion): each part
+  - **Preset 预设** buttons fill in the former separate features (build + matching Color By): **Abstract 抽象**
+    (1 squashed sphere per part, Color by Up repeated 2× — the old abstract petals), **Blocks 积木** (many small
+    cubes, Color by Along), **Cubes 立方体** (few big tilted boxes, Color by Piece, from the user's cube refs).
+- **Material → Color 颜色** (top of every Material category; restructure phase 3): ONE ramp (2–5 colors, + / −
+  Color, ramp presets Cubes / Dream / Blender) and **Color By 颜色依据**: Part 部件色 (the Form colors as built —
+  default, natural look) / Along 沿长度 (base → tip) / Up 上下 (underside → top) / Facing 朝向 (center → edge) /
+  Noise 噪声 / Piece 每块 (each piece its own gradient, Spread 每块渐变; needs Build = Pieces/Fused). Repeat 重复
+  makes stripes. Every style uses it: Natural, Pearl (with Part Colors on), Dream; Glitch keeps its own greys.
+- **Material Style 风格** (still images, no motion): each part
   picks its own **Natural 自然 / Pearl 珍珠 / Dream 梦境 / Glitch 故障** with its own settings.
   - Pearl: stylized "painted light" (Highlight, Glow, Body, Shadow colors, Highlight Size, Softness, Rim,
     Light Angle, Part Colors on/off) with a preview ball.
-  - Dream: 5-color ramp inside the part, colored by facing / length (blades only) / noise, with Repeat, Fringe,
+  - Dream: the part's Color ramp as a glowing, melting gradient (Color "Part" = center → edge), with Fringe,
     Flow (static wobble), Edge Fade and a Halo glow shell (not on the stem).
   - Glitch: broken-video look from the user's glitch reference image — flat grey levels, vertical stripes,
     neon green/cyan accents in bands and blocks, grain (Dark/Mid/Light, Accent 1/2, Levels, Stripes,

@@ -9,8 +9,9 @@
 //   4. then either
 //        pieces 拼块 → draw a primitive (cube, sphere, gem, cone, torus, capsule) per piece, or
 //        fused 融合  → turn each piece into an ellipsoid and melt them together (fused.ts)
-//   5. color every corner: the part's own colors / color → color2 along the part / by facing / each piece its own
-//      palette gradient (see PieceColor in spec.ts)
+//   5. record per corner: the part's own color there ("color", used when Material → Color is "Part"), where it is
+//      along the part ("aAlong", 0 base → 1 tip) and which piece it belongs to ("aPiece": the piece's random start,
+//      position across the piece). The ramp itself is applied by the material (scene/partColor.ts).
 //
 // The old features are presets of this (spec.ts buildPreset): Abstract = count 1 fitted primitive,
 // Blocks = many small cubes colored along the part, Cubes = few big tilted boxes with palette gradients.
@@ -19,7 +20,6 @@ import * as THREE from "three";
 import { mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { BuildSpec, Primitive } from "./spec";
 import { ellipsoidPiece, melt } from "./fused";
-import { pingpong, sampleRamp, wrap01 } from "./ramp";
 
 /** Which way the part's length runs: blades along +X, stems/buds/centers along +Y, fused flowers outward. */
 export type BuildAxis = "x" | "y" | "radial";
@@ -28,6 +28,8 @@ export interface BuildInput {
   spec: BuildSpec;
   color: string; // the part's own color (fallback when the geometry has no vertex colors; along/facing start)
   axis: BuildAxis;
+  /** Finer faces on cubes, so a gradient across one piece shows (Material → Color = Piece). */
+  fine: boolean;
 }
 
 /** Small deterministic random numbers, so the same settings always give the same pieces. */
@@ -190,59 +192,65 @@ function template(p: Primitive, fine: boolean): THREE.BufferGeometry {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
-// Step 5: colors
+// Step 5: per-corner data
 
-interface Colorer {
-  /** Color for a corner: its spot in the piece's own space (−0.5…0.5), in part space, its normal, and the piece. */
-  (local: THREE.Vector3, world: THREE.Vector3, normal: THREE.Vector3, piece: Piece, out: THREE.Color): void;
+interface Corner {
+  color: THREE.Color; // the part's own color here
+  along: number; // 0 base → 1 tip
+  pieceStart: number; // the piece's random start on the ramp
+  across: number; // position across the piece, about −0.8…0.8
 }
 
-function colorer(input: BuildInput, along: (p: THREE.Vector3) => number, lo: number, span: number): Colorer {
-  const s = input.spec;
-  const c1 = new THREE.Color(input.color), c2 = new THREE.Color(s.color2);
-  const pal = s.palette.map((h) => new THREE.Color(h));
-  const two = (t: number, out: THREE.Color) =>
-    out.copy(c1).lerp(c2, THREE.MathUtils.smoothstep(pingpong(THREE.MathUtils.clamp(t, 0, 1), s.bands), 0, 1));
-  switch (s.colorBy) {
-    case "part":
-      return (_l, _w, _n, piece, out) => out.copy(piece.color);
-    case "along":
-      return (_l, w, _n, _p, out) => two((along(w) - lo) / span, out);
-    case "facing":
-      return (_l, _w, n, _p, out) => two(n.y * 0.5 + 0.5, out);
-    case "piece":
-      return (l, _w, _n, piece, out) => sampleRamp(pal, wrap01(piece.start + s.gradient * l.dot(piece.dir) * 1.6), out);
-  }
+/** Data for a corner: its spot in the piece's own space (−0.5…0.5), in part space, and its piece. */
+function corner(local: THREE.Vector3, world: THREE.Vector3, piece: Piece, along: (p: THREE.Vector3) => number, lo: number, span: number, out: Corner) {
+  out.color.copy(piece.color);
+  out.along = THREE.MathUtils.clamp((along(world) - lo) / span, 0, 1);
+  out.pieceStart = piece.start;
+  out.across = local.dot(piece.dir) * 1.6;
 }
 
-function writePieces(pieces: Piece[], tpl: THREE.BufferGeometry, color: Colorer): THREE.BufferGeometry {
+/** Writes the per-corner data arrays into a geometry. */
+function setCornerAttributes(g: THREE.BufferGeometry, col: Float32Array, al: Float32Array, pc: Float32Array) {
+  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  g.setAttribute("aAlong", new THREE.BufferAttribute(al, 1));
+  g.setAttribute("aPiece", new THREE.BufferAttribute(pc, 2));
+}
+
+function writePieces(pieces: Piece[], tpl: THREE.BufferGeometry, along: (p: THREE.Vector3) => number, lo: number, span: number): THREE.BufferGeometry {
   const tPos = tpl.getAttribute("position"), tNrm = tpl.getAttribute("normal"), tIdx = tpl.index;
   const vPer = tPos.count, iPer = tIdx ? tIdx.count : vPer;
-  const outPos = new Float32Array(pieces.length * vPer * 3);
-  const outNrm = new Float32Array(pieces.length * vPer * 3);
-  const outCol = new Float32Array(pieces.length * vPer * 3);
+  const total = pieces.length * vPer;
+  const outPos = new Float32Array(total * 3);
+  const outNrm = new Float32Array(total * 3);
+  const outCol = new Float32Array(total * 3);
+  const outAl = new Float32Array(total);
+  const outPc = new Float32Array(total * 2);
   const outIdx = new Uint32Array(pieces.length * iPer);
-  const local = new THREE.Vector3(), world = new THREE.Vector3(), n = new THREE.Vector3(), col = new THREE.Color();
+  const local = new THREE.Vector3(), world = new THREE.Vector3(), n = new THREE.Vector3();
+  const cr: Corner = { color: new THREE.Color(), along: 0, pieceStart: 0, across: 0 };
   const m = new THREE.Matrix4(), nm = new THREE.Matrix3();
   pieces.forEach((pc, pi) => {
     m.compose(pc.center, pc.quat, pc.dims);
     nm.getNormalMatrix(m);
     for (let k = 0; k < vPer; k++) {
-      const o = (pi * vPer + k) * 3;
+      const v = pi * vPer + k;
       local.fromBufferAttribute(tPos, k);
       world.copy(local).applyMatrix4(m);
-      world.toArray(outPos, o);
+      world.toArray(outPos, v * 3);
       n.fromBufferAttribute(tNrm, k).applyMatrix3(nm).normalize();
-      n.toArray(outNrm, o);
-      color(local, world, n, pc, col);
-      col.toArray(outCol, o);
+      n.toArray(outNrm, v * 3);
+      corner(local, world, pc, along, lo, span, cr);
+      cr.color.toArray(outCol, v * 3);
+      outAl[v] = cr.along;
+      outPc[v * 2] = cr.pieceStart;
+      outPc[v * 2 + 1] = cr.across;
     }
     for (let k = 0; k < iPer; k++) outIdx[pi * iPer + k] = (tIdx ? tIdx.getX(k) : k) + pi * vPer;
   });
   const out = new THREE.BufferGeometry();
   out.setAttribute("position", new THREE.BufferAttribute(outPos, 3));
   out.setAttribute("normal", new THREE.BufferAttribute(outNrm, 3));
-  out.setAttribute("color", new THREE.BufferAttribute(outCol, 3));
+  setCornerAttributes(out, outCol, outAl, outPc);
   out.setIndex(new THREE.BufferAttribute(outIdx, 1));
   out.computeBoundingSphere();
   return out;
@@ -251,42 +259,46 @@ function writePieces(pieces: Piece[], tpl: THREE.BufferGeometry, color: Colorer)
 // ---------------------------------------------------------------------------------------------------------------
 // Step 4b: fused — the pieces as ellipsoids, melted
 
-function fusePieces(pieces: Piece[], spec: BuildSpec, color: Colorer): THREE.BufferGeometry {
+function fusePieces(pieces: Piece[], spec: BuildSpec, along: (p: THREE.Vector3) => number, lo: number, span: number): THREE.BufferGeometry {
   const avg = pieces.reduce((m, p) => m + (p.dims.x + p.dims.y + p.dims.z) / 3, 0) / Math.max(1, pieces.length);
   const k = spec.blend * avg * 0.8;
   const g = melt(pieces.map((p) => ellipsoidPiece(p.center, p.quat, p.dims.clone().multiplyScalar(0.5), k)), k, spec.detail);
-  // Each surface point takes its color from the nearby pieces (closer = stronger), so colors blend at the joins.
-  const P = g.getAttribute("position"), N = g.getAttribute("normal");
-  const col = new Float32Array(P.count * 3);
-  const w = new THREE.Vector3(), n = new THREE.Vector3(), local = new THREE.Vector3(), c = new THREE.Color(), sum = new THREE.Color();
+  // Each surface point blends the color of nearby pieces (closer = stronger), so colors melt at the joins;
+  // it belongs to the closest piece for the "piece" ramp.
+  const P = g.getAttribute("position");
+  const col = new Float32Array(P.count * 3), al = new Float32Array(P.count), pcA = new Float32Array(P.count * 2);
+  const w = new THREE.Vector3(), local = new THREE.Vector3(), sum = new THREE.Color();
+  const cr: Corner = { color: new THREE.Color(), along: 0, pieceStart: 0, across: 0 };
   const inv = pieces.map((p) => new THREE.Matrix4().compose(p.center, p.quat, p.dims).invert());
   const reach2 = (avg * 2) ** 2;
   for (let i = 0; i < P.count; i++) {
     w.fromBufferAttribute(P, i);
-    n.fromBufferAttribute(N, i);
     sum.setRGB(0, 0, 0);
-    let total = 0;
+    let total = 0, best = -1, bestD = Infinity;
     pieces.forEach((p, pi) => {
       const d2 = w.distanceToSquared(p.center) + 1e-9;
+      if (d2 < bestD) { bestD = d2; best = pi; }
       if (d2 > reach2 && total > 0) return; // far pieces barely count; skip them (big speed-up with many pieces)
       const wt = 1 / (d2 * d2);
-      local.copy(w).applyMatrix4(inv[pi]);
-      color(local, w, n, p, c);
-      sum.r += c.r * wt; sum.g += c.g * wt; sum.b += c.b * wt;
+      sum.r += p.color.r * wt; sum.g += p.color.g * wt; sum.b += p.color.b * wt;
       total += wt;
     });
     col[i * 3] = sum.r / total;
     col[i * 3 + 1] = sum.g / total;
     col[i * 3 + 2] = sum.b / total;
+    local.copy(w).applyMatrix4(inv[best]);
+    corner(local, w, pieces[best], along, lo, span, cr);
+    al[i] = cr.along;
+    pcA[i * 2] = cr.pieceStart;
+    pcA[i * 2 + 1] = cr.across;
   }
-  g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  setCornerAttributes(g, col, al, pcA);
   return g;
 }
 
-/** Rebuilds `source` as pieces or a fused blob (only call when spec.mode isn't "smooth"). */
-export function buildPart(source: THREE.BufferGeometry, input: BuildInput): THREE.BufferGeometry {
-  const along = alongFn(input.axis);
-  const pos = source.getAttribute("position");
+/** Position along the part (0 base → 1 tip) of every vertex, by its axis. */
+function alongRange(g: THREE.BufferGeometry, along: (p: THREE.Vector3) => number) {
+  const pos = g.getAttribute("position");
   const v = new THREE.Vector3();
   let lo = Infinity, hi = -Infinity;
   for (let i = 0; i < pos.count; i++) {
@@ -294,11 +306,30 @@ export function buildPart(source: THREE.BufferGeometry, input: BuildInput): THRE
     lo = Math.min(lo, t);
     hi = Math.max(hi, t);
   }
-  const span = hi - lo || 1e-3;
+  return { lo, span: hi - lo || 1e-3 };
+}
+
+/**
+ * Makes sure a geometry has the "aAlong" attribute (0 base → 1 tip) that Material → Color reads. Blades and
+ * rebuilt parts write their own; for the rest (stem, bud, center, receptacle) it's measured along `axis`.
+ */
+export function ensureAlong(g: THREE.BufferGeometry, axis: BuildAxis): THREE.BufferGeometry {
+  if (g.getAttribute("aAlong")) return g;
+  const along = alongFn(axis);
+  const { lo, span } = alongRange(g, along);
+  const pos = g.getAttribute("position");
+  const al = new Float32Array(pos.count);
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) al[i] = (along(v.fromBufferAttribute(pos, i)) - lo) / span;
+  g.setAttribute("aAlong", new THREE.BufferAttribute(al, 1));
+  return g;
+}
+
+/** Rebuilds `source` as pieces or a fused blob (only call when spec.mode isn't "smooth"). */
+export function buildPart(source: THREE.BufferGeometry, input: BuildInput): THREE.BufferGeometry {
+  const along = alongFn(input.axis);
+  const { lo, span } = alongRange(source, along);
   const pieces = placePieces(source, input, span);
-  const color = colorer(input, along, lo, span);
-  if (input.spec.mode === "fused") return fusePieces(pieces, input.spec, color);
-  // A palette gradient inside one piece needs finer faces (cube corners alone can't show 5 colors).
-  const fine = input.spec.colorBy === "piece" && input.spec.gradient > 0;
-  return writePieces(pieces, template(input.spec.primitive, fine), color);
+  if (input.spec.mode === "fused") return fusePieces(pieces, input.spec, along, lo, span);
+  return writePieces(pieces, template(input.spec.primitive, input.fine), along, lo, span);
 }

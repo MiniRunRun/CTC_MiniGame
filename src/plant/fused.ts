@@ -143,8 +143,8 @@ export function melt(pieces: SdfPiece[], k: number, detail: number): THREE.Buffe
 }
 
 /**
- * Whole fused flower in flower-local space (+Y = flower axis), with vertex colors: petals.color near the center
- * → b.color2 on the petals. Petal ellipsoids use the build's width / thickness (fractions of petal length).
+ * Whole fused flower in flower-local space (+Y = flower axis), with vertex colors from the petal color and aAlong
+ * from the center outward. Petal ellipsoids use the build's width / thickness (fractions of petal length).
  */
 export function buildFusedFlower(petals: PetalSpec, b: BuildSpec, innerRadius: number, centerRadius: number): THREE.BufferGeometry {
   const L = petals.size;
@@ -165,15 +165,19 @@ export function buildFusedFlower(petals: PetalSpec, b: BuildSpec, innerRadius: n
   }
 
   const g = melt(pieces, k, b.detail);
-  // Stalks/center in the petal color, petals in color2.
+  // "Part" colors: the petal color, a little darker toward the center. aAlong = distance from the axis (center →
+  // petal tips), so Material → Color "Along" colors the flower from the middle outward.
   const P = g.getAttribute("position");
-  const col = new Float32Array(P.count * 3);
-  const c1 = new THREE.Color(petals.color), c2 = new THREE.Color(b.color2), c = new THREE.Color();
+  const col = new Float32Array(P.count * 3), al = new Float32Array(P.count);
+  const c1 = new THREE.Color(petals.color).multiplyScalar(0.7), c2 = new THREE.Color(petals.color), c = new THREE.Color();
   const reach = tips.reduce((m, t) => Math.max(m, Math.hypot(t.x, t.z)), 0) || 1;
   for (let i = 0; i < P.count; i++) {
-    c.copy(c1).lerp(c2, THREE.MathUtils.smoothstep(Math.hypot(P.getX(i), P.getZ(i)) / reach, 0.45, 0.85));
+    const t = Math.min(1, Math.hypot(P.getX(i), P.getZ(i)) / reach);
+    c.copy(c1).lerp(c2, THREE.MathUtils.smoothstep(t, 0.3, 0.8));
     c.toArray(col, i * 3);
+    al[i] = t;
   }
   g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+  g.setAttribute("aAlong", new THREE.BufferAttribute(al, 1));
   return g;
 }

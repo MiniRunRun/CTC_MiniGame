@@ -27,7 +27,7 @@ export interface BladeOptions {
 
 /**
  * Blade in local space: grows along +X from the origin, width along Z, front face toward +Y.
- * Has a vertex "color" attribute fading from baseColor to tipColor.
+ * Has a vertex "color" attribute fading from baseColor to tipColor, and "aAlong" (0 base → 1 tip).
  */
 export function buildBlade(o: BladeOptions): THREE.BufferGeometry {
   const rows = o.rows ?? 28;
@@ -35,6 +35,7 @@ export function buildBlade(o: BladeOptions): THREE.BufferGeometry {
   const L = o.length;
   const positions: number[] = [];
   const colors: number[] = [];
+  const along: number[] = []; // base → tip, for Material → Color (aAlong)
   const indices: number[] = [];
   const c = new THREE.Color();
 
@@ -52,6 +53,7 @@ export function buildBlade(o: BladeOptions): THREE.BufferGeometry {
 
       c.copy(o.baseColor).lerp(o.tipColor, THREE.MathUtils.smoothstep(v, 0, 0.7));
       colors.push(c.r, c.g, c.b);
+      along.push(v);
     }
   }
 
@@ -67,6 +69,7 @@ export function buildBlade(o: BladeOptions): THREE.BufferGeometry {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setAttribute("aAlong", new THREE.Float32BufferAttribute(along, 1));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
   return geometry;

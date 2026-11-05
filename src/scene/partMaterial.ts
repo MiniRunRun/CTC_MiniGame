@@ -1,7 +1,8 @@
-// Turns one part's MaterialSpec (natural / pearl / dream / glitch) into three.js materials.
+// Turns one part's MaterialSpec (natural / pearl / dream / glitch) + its Color into three.js materials.
 // Used by Plant.tsx for every part: stem, leaves, petals, center, sepals & buds.
 import * as THREE from "three";
-import type { AnimationSpec, MaterialPart, MaterialSpec } from "../plant/spec";
+import type { AnimationSpec, ColorSpec, MaterialPart, MaterialSpec } from "../plant/spec";
+import { applyPartColor } from "./partColor";
 import { applyAnimation, type AnimKind, type PlantMotion } from "./animation";
 import { makeMatcapTexture } from "./matcap";
 import { geometryCenter, makeDreamMaterial } from "./dreamMaterial";
@@ -14,10 +15,10 @@ export interface PartInfo {
   color?: string;
   doubleSide?: boolean;
   roughness: number;
-  /** Part length along +X (blades) for the dream "length" input; 0 = no length axis. */
-  axisLen?: number;
-  /** Measure dream "length" outward from the axis instead (fused flowers). */
-  radial?: boolean;
+  /** The part's Color (Material → Color: ramp + what drives it), see partColor.ts. */
+  paint: ColorSpec;
+  /** Part length, for noise scales. */
+  size: number;
   /** Geometry to grow the dream halo shell around; omit for no halo (e.g. the stem). */
   haloGeometry?: THREE.BufferGeometry;
 }
@@ -63,11 +64,12 @@ function buildMaterial(m: MaterialSpec, o: PartInfo): PartMaterials {
       vertexColors: m.pearl.tint && !!o.vertexColors,
       color: m.pearl.tint && o.color ? o.color : "#ffffff",
     });
+    if (m.pearl.tint) applyPartColor(material, o.paint, o.size); // pearl uses part colors only when tinted
     return { material, halo: null, disposables: [material, matcap] };
   }
 
   if (m.type === "dream") {
-    const info = { axisLen: o.axisLen ?? 0, radial: o.radial, doubleSide: o.doubleSide };
+    const info = { color: o.paint, size: o.size, doubleSide: o.doubleSide };
     const material = makeDreamMaterial(m.dream, info);
     let halo: THREE.ShaderMaterial | null = null;
     if (m.dream.halo > 0 && o.haloGeometry) {
@@ -87,5 +89,6 @@ function buildMaterial(m: MaterialSpec, o: PartInfo): PartMaterials {
     side,
     roughness: o.roughness,
   });
+  applyPartColor(material, o.paint, o.size);
   return { material, halo: null, disposables: [material] };
 }

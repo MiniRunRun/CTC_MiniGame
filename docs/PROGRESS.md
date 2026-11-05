@@ -13,6 +13,28 @@ Template:
 
 ---
 
+## 2026-11-06 — Restructure phase 3: one Color per part
+
+**Done:**
+- New `spec.colors[part]` (ColorSpec: by, ramp 2–5, repeat, spread) shown as **Color 颜色** at the top of each
+  Material category. By: Part (default, Form colors as before) / Along / Up / Facing / Noise / Piece. Ramp presets
+  (Cubes, Dream, Blender), + / − color.
+- Geometry now stores data instead of ramp colors: `aAlong` everywhere (blade.ts, build.ts, fused.ts,
+  `ensureAlong`), `aPiece` for pieces. Removed Build's colorBy / color2 / bands / gradient / palette and Dream's
+  input / ramp / repeat — all now come from the part's Color.
+- `scene/partColor.ts` injects the ramp into Natural and tinted Pearl materials; Dream reads the same uniforms;
+  Glitch keeps its greys. `scene/shaderPatch.ts` lets part color and animation patch the same material.
+- GLSL snippets got include guards; `rampN(name, count)` replaces `ramp5`.
+- Tested: petals Along + Blender ramp, leaves Noise, stem Up + stem Glitch animation together, petals Cubes
+  preset (switches Color to Piece), leaves Dream with Noise + Dream ramp, petals Pearl with Part Colors on. No
+  console errors.
+
+**Not finished / known issues:** Dream's own default ramp (lavender/olive/pink) is now the "Dream 梦境" ramp
+preset — switching a part to Dream uses that part's ramp. Glitch doesn't use the part Color. Center sub-parts
+(dome, florets, pistil) share one ramp when by ≠ Part. Phase 4 (registry, spec regroup) still to do.
+
+---
+
 ## 2026-11-05 — Restructure phases 1 + 2: shared helpers, one Build system
 
 **Done:**

@@ -85,10 +85,6 @@ export interface ArchitectureSpec {
  *                 `flower` melts the whole flower instead (all petals + stalks + a center ball).
  */
 export type Primitive = "cube" | "sphere" | "gem" | "cone" | "torus" | "capsule";
-/** How pieces are colored: part = the part's own colors, along = color → color2 base → tip, facing = color → color2
- * by which way the surface faces, piece = each piece gets its own gradient from the palette. */
-export type PieceColor = "part" | "along" | "facing" | "piece";
-
 export interface BuildSpec {
   mode: "smooth" | "pieces" | "fused";
   primitive: Primitive; // pieces only (fused always uses ellipsoids)
@@ -99,11 +95,6 @@ export interface BuildSpec {
   variation: number; // 0 – 1, random size differences
   tilt: number; // 0 – 1, random turn away from the surface
   align: "follow" | "grid"; // 顺着走势: on the surface along the part / 网格: axis-aligned grid (pieces only)
-  colorBy: PieceColor;
-  color2: string; // along / facing: second color (first = the part's Color)
-  bands: number; // along / facing: 1 – 6, the two colors repeat as stripes
-  gradient: number; // piece: 0 (flat color per piece) – 1 (full gradient across each piece)
-  palette: string[]; // piece: 5 colors; each piece starts somewhere different in it
   blend: number; // fused: 0 (sharp joins) – 1 (very melted)
   detail: number; // fused: mesh resolution 32 – 96
   flower: boolean; // fused petals: melt the whole flower (petals + stalks + center ball) into one shape
@@ -113,17 +104,53 @@ export interface BuildSpec {
 
 export type BuildPreset = "abstract" | "blocks" | "cubes";
 
-/** Presets for pieces (the three former separate features). `count` depends on the part's size. */
-export function buildPreset(preset: BuildPreset, part: MaterialPart): Partial<BuildSpec> {
+/**
+ * Presets for pieces (the three former separate features): build settings plus the coloring that goes with them.
+ * `count` depends on the part's size.
+ */
+export function buildPreset(preset: BuildPreset, part: MaterialPart): { build: Partial<BuildSpec>; color: Partial<ColorSpec> } {
   switch (preset) {
     case "abstract": // one squashed primitive per part, two-color top/underside stripes (Blender reference)
-      return { primitive: "sphere", count: 1, scale: 1, width: 0.6, thickness: 0.35, variation: 0, tilt: 0, align: "follow", colorBy: "facing", bands: 2 };
+      return {
+        build: { primitive: "sphere", count: 1, scale: 1, width: 0.6, thickness: 0.35, variation: 0, tilt: 0, align: "follow" },
+        color: { by: "up", repeat: 2 },
+      };
     case "blocks": // many small equal cubes, one gradient along the part
-      return { primitive: "cube", count: part === "stem" ? 80 : part === "sepals" ? 6 : 14, scale: 0.9, width: 1, thickness: 1, variation: 0, tilt: 0, align: "follow", colorBy: "along", bands: 1 };
-    case "cubes": // few big tilted boxes, each with its own palette gradient
-      return { primitive: "cube", count: part === "stem" ? 14 : 2, scale: 1.15, width: 0.87, thickness: 0.65, variation: 0.6, tilt: 0.3, align: "follow", colorBy: "piece", gradient: 0.8 };
+      return {
+        build: { primitive: "cube", count: part === "stem" ? 80 : part === "sepals" ? 6 : 14, scale: 0.9, width: 1, thickness: 1, variation: 0, tilt: 0, align: "follow" },
+        color: { by: "along", repeat: 1 },
+      };
+    case "cubes": // few big tilted boxes, each with its own gradient from the ramp
+      return {
+        build: { primitive: "cube", count: part === "stem" ? 14 : 2, scale: 1.15, width: 0.87, thickness: 0.65, variation: 0.6, tilt: 0.3, align: "follow" },
+        color: { by: "piece", repeat: 1, spread: 0.8 },
+      };
   }
 }
+
+/**
+ * Color per part (颜色, shown in the Material category): ONE ramp + what picks the spot on it. Every material reads
+ * it (scene/partColor.ts); geometry only stores where each point is (along the part, which piece).
+ *   part   = the part's own Form colors, as built (no ramp) — the default, today's natural look
+ *   along  = base → tip            up    = underside → top (object normal)
+ *   facing = center → silhouette   noise = smooth 3D noise pattern
+ *   piece  = each piece starts at its own random spot, with a gradient across it (Build = Pieces)
+ */
+export type ColorBy = "part" | "along" | "up" | "facing" | "noise" | "piece";
+
+export interface ColorSpec {
+  by: ColorBy;
+  ramp: string[]; // 2 – 5 colors, start → end
+  repeat: number; // 1 – 6, the ramp repeats back and forth (stripes / contour rings)
+  spread: number; // piece: 0 (one flat color per piece) – 1 (full gradient across each piece)
+}
+
+/** Ramp presets (from the user's references). */
+export const RAMP_PRESETS: Record<string, string[]> = {
+  "Cubes 立方体": ["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"],
+  "Dream 梦境": ["#a9adc2", "#c9bfe6", "#b3a547", "#f0b3bd", "#f6f2f4"],
+  "Blender 蓝粉": ["#e98bb0", "#5468e0"],
+};
 
 /**
  * Material per part (材质). Every part (stem, leaves, petals, center, sepals & buds) has its own:
@@ -150,11 +177,9 @@ export interface PearlSpec {
   tint: boolean; // multiply by the part's own colors
 }
 
-/** Dream (梦境): the part colors itself from a 5-color ramp — unlike the screen effect (EffectSpec). */
+/** Dream (梦境): the part's Color ramp drawn as a glowing, melting gradient (fringe, flow, edge fade, halo) —
+ * unlike the screen effect (EffectSpec). Uses Color → By; "Part" falls back to facing (center → edge). */
 export interface DreamSpec {
-  input: "facing" | "length" | "noise"; // what picks the ramp color: center→edge, base→tip, or a noise pattern
-  ramp: string[]; // 5 colors, ramp start → end (for facing: center → edge)
-  repeat: number; // 1 – 4, ramp repeats → contour rings
   fringe: number; // 0 – 1, rainbow edges (r/g/b read the ramp slightly apart)
   flow: number; // 0 – 1, noise wobble of the color bands (melted look)
   edge: number; // 0 – 1, edges fade out (makes the part transparent)
@@ -238,6 +263,7 @@ export interface PlantSpec {
   materials: Record<MaterialPart, MaterialSpec>;
   animations: Record<MaterialPart, AnimationSpec>; // same parts as materials
   builds: Record<MaterialPart, BuildSpec>; // Form → Build (smooth / pieces / fused) per part
+  colors: Record<MaterialPart, ColorSpec>; // Material → Color ramp per part
   plantAnimation: PlantAnimationSpec;
   scene: SceneSpec;
   effect: EffectSpec;
@@ -261,9 +287,6 @@ function material(halo: number): MaterialSpec {
     },
     // Dream defaults follow the user's blurred reference: lavender-grey center, olive, pink, white edge.
     dream: {
-      input: "facing",
-      ramp: ["#a9adc2", "#c9bfe6", "#b3a547", "#f0b3bd", "#f6f2f4"],
-      repeat: 1,
       fringe: 0.4,
       flow: 0.3,
       edge: 0,
@@ -289,9 +312,8 @@ function material(halo: number): MaterialSpec {
 }
 
 /** Default build: smooth, with cube settings ready for when the player switches. */
-// Default pieces settings = the Cubes preset; palette from the user's big-gradient-cube reference
-// (orange → pink → lavender → olive → dark green). Petals' color2 is the blue from the Blender reference.
-function build(part: MaterialPart, color2: string): BuildSpec {
+// Default pieces settings = the Cubes preset.
+function build(part: MaterialPart): BuildSpec {
   return {
     mode: "smooth",
     primitive: "cube",
@@ -302,18 +324,18 @@ function build(part: MaterialPart, color2: string): BuildSpec {
     variation: 0,
     tilt: 0,
     align: "follow",
-    colorBy: "piece",
-    color2,
-    bands: 1,
-    gradient: 0.8,
-    palette: ["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"],
     blend: 0.5,
     detail: 64,
     flower: part === "petals",
     stalk: 0.12,
     stalkWidth: 0.012,
-    ...buildPreset("cubes", part),
+    ...buildPreset("cubes", part).build,
   };
+}
+
+/** Default color: the part's own colors; ramp ready for when the player picks a driver. */
+function paint(ramp: string[]): ColorSpec {
+  return { by: "part", ramp, repeat: 1, spread: 0.8 };
 }
 
 /** Default animation: everything still. */
@@ -391,11 +413,18 @@ export const DEFAULT_SPEC: PlantSpec = {
   },
   plantAnimation: { glitch: 0, glitchBlock: 0.4, speed: 0.5 },
   builds: {
-    stem: build("stem", "#b8e07a"),
-    leaves: build("leaves", "#d9f2a6"),
-    petals: build("petals", "#5468e0"),
-    center: build("center", "#ff8a3d"),
-    sepals: build("sepals", "#d9f2a6"),
+    stem: build("stem"),
+    leaves: build("leaves"),
+    petals: build("petals"),
+    center: build("center"),
+    sepals: build("sepals"),
+  },
+  colors: {
+    stem: paint(["#2f5d2a", "#4f8a3c", "#b8e07a"]),
+    leaves: paint(["#2f6b2a", "#4a8a3a", "#d9f2a6"]),
+    petals: paint(["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"]),
+    center: paint(["#7a4a12", "#e8b923", "#ff8a3d"]),
+    sepals: paint(["#3c6e2c", "#5d9a45", "#d9f2a6"]),
   },
   scene: {
     background: "#1d1f24",

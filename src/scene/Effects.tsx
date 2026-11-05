@@ -13,7 +13,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { usePlant } from "../state/store";
-import { HASH, PINGPONG, ramp5 } from "./glsl";
+import { HASH, PINGPONG, rampN } from "./glsl";
 
 const VERTEX = /* glsl */ `
 varying vec2 vUv;
@@ -54,7 +54,7 @@ uniform float contrast, offset, repeat, aberration, grain, time;
 varying vec2 vUv;
 ${HASH}
 ${PINGPONG}
-${ramp5("ramp")}
+${rampN("ramp", "5.0")}
 
 // Brightness (perceptual, 0–1) → position on the ramp.
 float level(vec2 uv) {

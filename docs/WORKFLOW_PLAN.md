@@ -1,6 +1,6 @@
 # Restructure plan: one pipeline per part (proposal, 2026-11-05)
 
-Status: **phases 1 and 2 done (2026-11-05)**; phases 3–4 not started. When a phase is done, move its notes into
+Status: **phases 1–3 done (2026-11-05/06)**; phase 4 not started. When a phase is done, move its notes into
 ARCHITECTURE.md / DECISIONS.md and mark it here.
 
 ## Problem (found by reading the code)
@@ -50,6 +50,6 @@ Features were added one by one, so the same idea now exists several times:
 1. ✅ **Shared helpers, no visible change:** GLSL common chunk, one JS ramp/pingpong, one `RampEditor`. Low risk.
 2. ✅ **Merge builds:** `Build = sheet | pieces | fused` for every part; abstract petals and Blocks/Cubes become
    presets of `pieces`. Visible: new combos (any primitive × any part).
-3. **Unify color:** attributes + one ramp per part, materials read it. Visible: same color controls everywhere.
+3. ✅ **Unify color:** attributes + one ramp per part, materials read it. Visible: same color controls everywhere.
 4. **Registry + spec regroup:** `spec.parts[part]`, generic `Plant.tsx` / `Panel.tsx`. Makes every later feature
    (Growing State, presets, save/load) a one-place change.

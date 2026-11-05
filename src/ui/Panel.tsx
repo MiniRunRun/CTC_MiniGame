@@ -9,7 +9,8 @@ import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
 import { buildPreset } from "../plant/spec";
-import type { AnimationSpec, BuildSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
+import { RAMP_PRESETS } from "../plant/spec";
+import type { AnimationSpec, BuildPreset, BuildSpec, ColorBy, ColorSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -58,6 +59,12 @@ function BuildControls({ part }: { part: MaterialPart }) {
   const set = (patch: Partial<BuildSpec>) => update("builds", { [part]: { ...usePlant.getState().spec.builds[part], ...patch } });
   const also = part === "stem" ? " (also receptacles 花托)" : part === "sepals" ? " (also buds 花蕾)" : "";
   const flower = part === "petals" && b.mode === "fused" && b.flower;
+  // A preset sets the build and the coloring that goes with it (Material → Color).
+  const applyPreset = (k: BuildPreset) => {
+    const p = buildPreset(k, part);
+    set(p.build);
+    update("colors", { [part]: { ...usePlant.getState().spec.colors[part], ...p.color } });
+  };
   return (
     <div className="subgroup">
       <Choice
@@ -75,7 +82,7 @@ function BuildControls({ part }: { part: MaterialPart }) {
           <div className="presets">
             <span className="ctl-label">Preset 预设</span>
             {(["abstract", "blocks", "cubes"] as const).map((k) => (
-              <button key={k} type="button" className="ghost" onClick={() => set(buildPreset(k, part))}>
+              <button key={k} type="button" className="ghost" onClick={() => applyPreset(k)}>
                 {{ abstract: "Abstract 抽象", blocks: "Blocks 积木", cubes: "Cubes 立方体" }[k]}
               </button>
             ))}
@@ -125,33 +132,6 @@ function BuildControls({ part }: { part: MaterialPart }) {
               <Slider label="Detail 精度" value={b.detail} min={32} max={96} step={8} onChange={(detail) => set({ detail })} />
             </>
           )}
-          {!flower && (
-            <Choice
-              label="Color By 颜色"
-              value={b.colorBy}
-              onChange={(colorBy) => set({ colorBy })}
-              options={[
-                { value: "part", label: "Part 部件色" },
-                { value: "along", label: "Along 沿长度" },
-                { value: "facing", label: "Facing 朝向" },
-                { value: "piece", label: "Piece 每块色板" },
-              ]}
-            />
-          )}
-          {(flower || b.colorBy === "along" || b.colorBy === "facing") && (
-            <>
-              <ColorPicker label="Color 2 第二颜色" value={b.color2} onChange={(color2) => set({ color2 })} />
-              {!flower && <Slider label="Bands 色带" value={b.bands} min={1} max={6} step={1} onChange={(bands) => set({ bands })} />}
-              <p className="hint">{flower ? "Center and stalks use the petal Color; petals turn to Color 2." : "Blends from the part's Color to Color 2."}</p>
-            </>
-          )}
-          {!flower && b.colorBy === "piece" && (
-            <>
-              <Slider label="Gradient 渐变" value={b.gradient} min={0} max={1} step={0.01} format={pct} onChange={(gradient) => set({ gradient })} />
-              <RampEditor label="Palette 色板" colors={b.palette} onChange={(palette) => set({ palette })} />
-              <p className="hint">Each piece starts at its own point in the palette. Gradient 0 = one flat color per piece.</p>
-            </>
-          )}
         </>
       )}
     </div>
@@ -165,7 +145,6 @@ function PartSection(props: {
   zh: string;
   open?: boolean;
   part: MaterialPart;
-  hasLength?: boolean;
   form: ReactNode;
 }) {
   return (
@@ -175,7 +154,8 @@ function PartSection(props: {
         <BuildControls part={props.part} />
       </Category>
       <Category en="Material" zh="材质">
-        <MaterialControls part={props.part} hasLength={props.hasLength} />
+        <ColorControls part={props.part} />
+        <MaterialControls part={props.part} />
       </Category>
       <Category en="Animation" zh="动画">
         <AnimationControls part={props.part} />
@@ -392,11 +372,75 @@ function CenterControls() {
   );
 }
 
+const COLOR_BY = [
+  { value: "part" as const, label: "Part 部件色" },
+  { value: "along" as const, label: "Along 沿长度" },
+  { value: "up" as const, label: "Up 上下" },
+  { value: "facing" as const, label: "Facing 朝向" },
+  { value: "noise" as const, label: "Noise 噪声" },
+  { value: "piece" as const, label: "Piece 每块" },
+];
+
+/** What the ends of the ramp mean for each driver, to label the first and last color. */
+const RAMP_ENDS: Record<ColorBy, [string, string]> = {
+  part: ["center 中心", "edge 边缘"], // used by Dream's fallback
+  along: ["base 根部", "tip 尖端"],
+  up: ["under 底面", "top 顶面"],
+  facing: ["center 中心", "edge 边缘"],
+  noise: ["low 低", "high 高"],
+  piece: ["", ""],
+};
+
+/**
+ * Color 颜色 (top of the Material category): ONE ramp per part + what picks the spot on it (scene/partColor.ts).
+ * Every material style reads it (Glitch keeps its own greys). "Part" = the Form colors as built, no ramp.
+ */
+function ColorControls({ part }: { part: MaterialPart }) {
+  const c = usePlant((st) => st.spec.colors[part]);
+  const style = usePlant((st) => st.spec.materials[part].type);
+  const build = usePlant((st) => st.spec.builds[part].mode);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<ColorSpec>) => update("colors", { [part]: { ...usePlant.getState().spec.colors[part], ...patch } });
+  const showRamp = c.by !== "part" || style === "dream";
+  const ends = RAMP_ENDS[c.by];
+  const names = c.ramp.map((_, i) => (i === 0 && ends[0] ? `1 ${ends[0]}` : i === c.ramp.length - 1 && ends[1] ? `${i + 1} ${ends[1]}` : String(i + 1)));
+  return (
+    <div className="subgroup">
+      <Choice label="Color By 颜色依据" value={c.by} onChange={(by) => set({ by })} options={COLOR_BY} />
+      {c.by === "part" && style !== "dream" && <p className="hint">Uses the Form colors. Pick another option to color with a ramp.</p>}
+      {c.by === "piece" && build === "smooth" && <p className="hint">Piece colors need Form → Build = Pieces or Fused.</p>}
+      {showRamp && (
+        <>
+          <RampEditor label="Ramp" colors={c.ramp} names={names} onChange={(ramp) => set({ ramp })} />
+          <div className="presets">
+            <span className="ctl-label">Ramp 色带</span>
+            <button type="button" className="ghost" disabled={c.ramp.length >= 5} onClick={() => set({ ramp: [...c.ramp, c.ramp[c.ramp.length - 1]] })}>
+              + Color
+            </button>
+            <button type="button" className="ghost" disabled={c.ramp.length <= 2} onClick={() => set({ ramp: c.ramp.slice(0, -1) })}>
+              − Color
+            </button>
+            {Object.entries(RAMP_PRESETS).map(([name, ramp]) => (
+              <button key={name} type="button" className="ghost" onClick={() => set({ ramp })}>
+                {name}
+              </button>
+            ))}
+          </div>
+          <Slider label="Repeat 重复" value={c.repeat} min={1} max={6} step={0.1} format={(v) => v.toFixed(1)} onChange={(repeat) => set({ repeat })} />
+          {c.by === "piece" && (
+            <Slider label="Spread 每块渐变" value={c.spread} min={0} max={1} step={0.01} format={pct} onChange={(spread) => set({ spread })} />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /**
  * Material category (材质) of every part section. Materials are still images; motion is in Animation.
  * Natural / Pearl 珍珠 / Dream 梦境 / Glitch 故障, each with its own settings, stored in spec.materials[part].
  */
-function MaterialControls({ part, hasLength = false }: { part: MaterialPart; hasLength?: boolean }) {
+function MaterialControls({ part }: { part: MaterialPart }) {
   const m = usePlant((st) => st.spec.materials[part]);
   const update = usePlant((st) => st.update);
   // Always start from the latest store state so quick successive changes don't undo each other.
@@ -408,7 +452,7 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
   return (
     <>
       <Choice
-        label="Type 类型"
+        label="Style 风格"
         value={m.type}
         onChange={setType}
         options={[
@@ -419,7 +463,7 @@ function MaterialControls({ part, hasLength = false }: { part: MaterialPart; has
         ]}
       />
       {m.type === "pearl" && <PearlControls p={m.pearl} set={setPearl} />}
-      {m.type === "dream" && <DreamControls d={m.dream} set={setDream} hasLength={hasLength} halo={part !== "stem"} />}
+      {m.type === "dream" && <DreamControls d={m.dream} set={setDream} halo={part !== "stem"} />}
       {m.type === "glitch" && <GlitchControls g={m.glitch} set={setGlitch} />}
     </>
   );
@@ -512,33 +556,14 @@ function PearlControls({ p, set }: { p: PearlSpec; set: (patch: Partial<PearlSpe
 }
 
 /** Dream material (inside the part). The blurred whole-screen version is 08 Effect. */
-function DreamControls({ d, set, hasLength, halo }: {
+function DreamControls({ d, set, halo }: {
   d: DreamSpec;
   set: (patch: Partial<DreamSpec>) => void;
-  hasLength: boolean; // part has a base→tip direction (blades); otherwise "Length" isn't offered
   halo: boolean; // part can have a halo shell (not the stem)
 }) {
-  const input = !hasLength && d.input === "length" ? "facing" : d.input;
-  const ends: Record<typeof d.input, [string, string]> = {
-    facing: ["center 中心", "edge 边缘"],
-    length: ["base 根部", "tip 尖端"],
-    noise: ["low 低", "high 高"],
-  };
-  const names = [`1 ${ends[input][0]}`, "2", "3", "4", `5 ${ends[input][1]}`];
   return (
     <>
-      <Choice
-        label="Color By 颜色依据"
-        value={input}
-        onChange={(v) => set({ input: v })}
-        options={[
-          { value: "facing", label: "Facing 朝向" },
-          ...(hasLength ? [{ value: "length" as const, label: "Length 沿长度" }] : []),
-          { value: "noise", label: "Noise 噪声" },
-        ]}
-      />
-      <RampEditor label="Ramp" colors={d.ramp} names={names} onChange={(ramp) => set({ ramp })} />
-      <Slider label="Repeat 色带重复" value={d.repeat} min={1} max={4} step={0.1} format={(v) => v.toFixed(1)} onChange={(repeat) => set({ repeat })} />
+      <p className="hint">Uses the Color ramp above. Color "Part" = center → edge (facing).</p>
       <Slider label="Fringe 色散" value={d.fringe} min={0} max={1} step={0.01} format={pct} onChange={(fringe) => set({ fringe })} />
       <Slider label="Flow 流动" value={d.flow} min={0} max={1} step={0.01} format={pct} onChange={(flow) => set({ flow })} />
       <Slider label="Edge Fade 边缘淡出" value={d.edge} min={0} max={1} step={0.01} format={pct} onChange={(edge) => set({ edge })} />
@@ -640,10 +665,10 @@ export default function Panel() {
         <button type="button" className="ghost" onClick={reset}>Reset 重置</button>
       </div>
       <PartSection num="01" en="Stem" zh="茎" open part="stem" form={<StemControls />} />
-      <PartSection num="02" en="Leaves" zh="叶" part="leaves" hasLength form={<LeafControls />} />
-      <PartSection num="03" en="Petals" zh="花瓣" open part="petals" hasLength form={<PetalControls />} />
+      <PartSection num="02" en="Leaves" zh="叶" part="leaves" form={<LeafControls />} />
+      <PartSection num="03" en="Petals" zh="花瓣" open part="petals" form={<PetalControls />} />
       <PartSection num="04" en="Flower Center" zh="花心" open part="center" form={<CenterControls />} />
-      <PartSection num="05" en="Sepals & Buds" zh="萼片与花蕾" part="sepals" hasLength form={<SepalControls />} />
+      <PartSection num="05" en="Sepals & Buds" zh="萼片与花蕾" part="sepals" form={<SepalControls />} />
       <Section num="06" en="Architecture" zh="整体结构" open>
         <ArchitectureControls />
       </Section>

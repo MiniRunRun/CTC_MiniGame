@@ -13,6 +13,18 @@ Template:
 
 ---
 
+## 2026-11-06 — Color is computed in the shader from geometry data (aAlong, aPiece)
+
+**Choice:** One `ColorSpec` per part; builders write position data (`aAlong`, `aPiece`), and every material
+computes the ramp color in its shader (injected into three's materials via `patchShader`, read directly by Dream).
+"Part" keeps the baked Form colors so the default look is unchanged.
+**Why:** Removes six separate gradient systems; changing ramp colors no longer rebuilds geometry (instant
+sliders); drivers that need the camera (Facing) work for every style; Dream and Natural/Pearl share one color.
+**Alternatives considered:** baking the ramp into vertex colors in JS (simpler, but Facing can't be baked and every
+color change rebuilds geometry); a separate ramp per material style (what we had — duplicated settings).
+
+---
+
 ## 2026-11-05 — One Build system (pieces / fused) for every part; old features become presets
 
 **Choice:** `spec.builds[part] = { mode: smooth|pieces|fused, primitive, count, scale, width, thickness,
