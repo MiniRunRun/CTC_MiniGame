@@ -24,10 +24,11 @@ function useDisposeOnChange(items: { dispose: () => void }[]) {
 }
 
 /** Draws `geometry` once per matrix, as a single InstancedMesh. */
-function Instances({ geometry, material, matrices, castShadow = true, renderOrder = 0 }: {
+function Instances({ geometry, material, matrices, anchors, castShadow = true, renderOrder = 0 }: {
   geometry: THREE.BufferGeometry;
   material: THREE.Material;
   matrices: THREE.Matrix4[];
+  anchors: THREE.Vector3[]; // attach point on the stem per copy (for animation, see animation.ts)
   castShadow?: boolean;
   renderOrder?: number; // higher = drawn later (used for the see-through halo shell)
 }) {
@@ -37,8 +38,12 @@ function Instances({ geometry, material, matrices, castShadow = true, renderOrde
     if (!mesh) return;
     matrices.forEach((m, i) => mesh.setMatrixAt(i, m));
     mesh.instanceMatrix.needsUpdate = true;
+    // Per-copy anchor attribute (each geometry is drawn with one list of copies, so it can live on the geometry).
+    const a = new Float32Array(anchors.length * 3);
+    anchors.forEach((p, i) => p.toArray(a, i * 3));
+    geometry.setAttribute("anchor", new THREE.InstancedBufferAttribute(a, 3));
     // geometry/material are constructor args: changing them makes a new mesh that needs its matrices again.
-  }, [matrices, geometry, material]);
+  }, [matrices, anchors, geometry, material]);
   if (matrices.length === 0) return null;
   return (
     <instancedMesh
@@ -54,11 +59,16 @@ function Instances({ geometry, material, matrices, castShadow = true, renderOrde
 }
 
 /** A part drawn as instances, plus its dream halo shell (a see-through enlarged copy) when it has one. */
-function Part({ geometry, mats, matrices }: { geometry: THREE.BufferGeometry; mats: PartMaterials; matrices: THREE.Matrix4[] }) {
+function Part({ geometry, mats, matrices, anchors }: {
+  geometry: THREE.BufferGeometry;
+  mats: PartMaterials;
+  matrices: THREE.Matrix4[];
+  anchors: THREE.Vector3[];
+}) {
   return (
     <>
-      <Instances geometry={geometry} material={mats.material} matrices={matrices} />
-      {mats.halo && <Instances geometry={geometry} material={mats.halo} matrices={matrices} castShadow={false} renderOrder={2} />}
+      <Instances geometry={geometry} material={mats.material} matrices={matrices} anchors={anchors} />
+      {mats.halo && <Instances geometry={geometry} material={mats.halo} matrices={matrices} anchors={anchors} castShadow={false} renderOrder={2} />}
     </>
   );
 }
@@ -99,9 +109,17 @@ export default function Plant() {
   // The stem's sway, which every other part follows so it stays attached (see animation.ts).
   // Plus the whole-plant glitch (spec.plantAnimation), shared by every part.
   const stemSway = anims.stem.type === "sway" ? anims.stem.amount : 0;
+  const stemGlitch = anims.stem.type === "glitch" ? anims.stem.amount : 0;
   const plant = useMemo(
-    () => ({ stemSway, stemSpeed: anims.stem.speed, stemLength: spec.stem.length, whole: spec.plantAnimation }),
-    [stemSway, anims.stem.speed, spec.stem.length, spec.plantAnimation],
+    () => ({
+      stemSway,
+      stemGlitch,
+      stemGlitchBlock: anims.stem.glitchBlock,
+      stemSpeed: anims.stem.speed,
+      stemLength: spec.stem.length,
+      whole: spec.plantAnimation,
+    }),
+    [stemSway, stemGlitch, anims.stem.glitchBlock, anims.stem.speed, spec.stem.length, spec.plantAnimation],
   );
   const petalGeo = fused ?? petal;
   // Length for the dream "length" input: petal length, or for fused flowers the reach from the axis to the petal tips.
@@ -111,8 +129,8 @@ export default function Plant() {
     [mats.stem, spec.stem.color, anims.stem, spec.stem.length, plant],
   );
   const receptacleMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, // receptacles sit on the stem: they follow its sway instead of swaying on their own
-      { spec: stemSway > 0 ? { ...anims.stem, type: "none" } : anims.stem, part: "stem", kind: "blob", size: spec.stem.thickness, plant, follow: true }),
+    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, // receptacles sit on the stem: they follow its sway/glitch instead of doing it on their own
+      { spec: stemSway + stemGlitch > 0 ? { ...anims.stem, type: "none" } : anims.stem, part: "stem", kind: "blob", size: spec.stem.thickness, plant, follow: true }),
     [mats.stem, spec.stem.color, receptacle, anims.stem, spec.stem.thickness, plant],
   );
   const leafMat = useMemo(
@@ -177,14 +195,19 @@ export default function Plant() {
   return (
     <group>
       <mesh geometry={layout.stemGeometry} material={stemMat.material} castShadow />
-      <Part geometry={leaf} mats={leafMat} matrices={parts.leaves} />
-      <Part geometry={receptacle} mats={receptacleMat} matrices={parts.receptacles} />
-      <Part geometry={sepal} mats={sepalMat} matrices={parts.sepals} />
-      <Part geometry={petalGeo} mats={petalMat} matrices={fused ? parts.heads : parts.petals} />
+      <Part geometry={leaf} mats={leafMat} matrices={parts.leaves} anchors={parts.anchors.leaves} />
+      <Part geometry={receptacle} mats={receptacleMat} matrices={parts.receptacles} anchors={parts.anchors.receptacles} />
+      <Part geometry={sepal} mats={sepalMat} matrices={parts.sepals} anchors={parts.anchors.sepals} />
+      <Part
+        geometry={petalGeo}
+        mats={petalMat}
+        matrices={fused ? parts.heads : parts.petals}
+        anchors={fused ? parts.anchors.heads : parts.anchors.petals}
+      />
       {center.map((c, i) => (
-        <Part key={i} geometry={c.geometry} mats={centerMats[i]} matrices={parts.heads} />
+        <Part key={i} geometry={c.geometry} mats={centerMats[i]} matrices={parts.heads} anchors={parts.anchors.heads} />
       ))}
-      <Part geometry={bud} mats={budMat} matrices={parts.buds} />
+      <Part geometry={bud} mats={budMat} matrices={parts.buds} anchors={parts.anchors.buds} />
     </group>
   );
 }

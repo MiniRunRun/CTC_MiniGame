@@ -14,7 +14,14 @@ export interface Assembly {
   heads: THREE.Matrix4[]; // one per flower; used for every flower-center part
   buds: THREE.Matrix4[];
   leaves: THREE.Matrix4[];
+  /**
+   * Where each copy is attached to the stem (plant space), parallel to the lists above. Animation uses it so
+   * parts move together with the stem at that point (scene/animation.ts). Flower parts use the flower's point.
+   */
+  anchors: Record<AnchoredList, THREE.Vector3[]>;
 }
+
+export type AnchoredList = "petals" | "sepals" | "receptacles" | "heads" | "buds" | "leaves";
 
 const Y = new THREE.Vector3(0, 1, 0);
 const Z = new THREE.Vector3(0, 0, 1);
@@ -33,7 +40,8 @@ export function ringMatrix(r: RingPlacement): THREE.Matrix4 {
 }
 
 export function assemble(spec: PlantSpec, layout: PlantLayout): Assembly {
-  const out: Assembly = { petals: [], sepals: [], receptacles: [], heads: [], buds: [], leaves: [] };
+  const anchors: Assembly["anchors"] = { petals: [], sepals: [], receptacles: [], heads: [], buds: [], leaves: [] };
+  const out: Assembly = { petals: [], sepals: [], receptacles: [], heads: [], buds: [], leaves: [], anchors };
   const inner = spec.center.size * 0.35;
   const receptacle = new THREE.Matrix4().makeScale(1, 0.7, 1);
 
@@ -60,6 +68,10 @@ export function assemble(spec: PlantSpec, layout: PlantLayout): Assembly {
     out.receptacles.push(m.clone().multiply(receptacle));
     for (const p of r.petals) out.petals.push(m.clone().multiply(p));
     for (const s of r.sepals) out.sepals.push(m.clone().multiply(s));
+    anchors.heads.push(f.position);
+    anchors.receptacles.push(f.position);
+    for (let i = 0; i < r.petals.length; i++) anchors.petals.push(f.position);
+    for (let i = 0; i < r.sepals.length; i++) anchors.sepals.push(f.position);
   }
 
   // Bud sepals hug the bud: a nearly upright ring.
@@ -67,9 +79,16 @@ export function assemble(spec: PlantSpec, layout: PlantLayout): Assembly {
   for (const b of layout.buds) {
     const m = placementMatrix(b);
     out.buds.push(m);
-    for (const s of hug) out.sepals.push(m.clone().multiply(s));
+    anchors.buds.push(b.position);
+    for (const s of hug) {
+      out.sepals.push(m.clone().multiply(s));
+      anchors.sepals.push(b.position);
+    }
   }
 
-  for (const l of layout.leaves) out.leaves.push(placementMatrix(l));
+  for (const l of layout.leaves) {
+    out.leaves.push(placementMatrix(l));
+    anchors.leaves.push(l.position);
+  }
   return out;
 }

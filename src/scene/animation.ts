@@ -10,7 +10,10 @@
 // `<begin_vertex>`, `<project_vertex>`), which exist in MeshStandardMaterial, MeshMatcapMaterial and our own
 // ShaderMaterials alike. Each copy (instance) gets its own phase from its position, so petals don't move in sync.
 // Two things act on the whole plant (PlantMotion), on top of each part's own motion:
-//   - stem sway: every other part gets the same bend at its height, so leaves/flowers stay attached
+//   - the stem's motion is carried by everything attached to it: each copy of a part has an `anchor` attribute
+//     (its attach point on the stem, from assemble.ts) and moves rigidly by exactly what the stem does there —
+//     the stem's sway offset at that height, and the stem's glitch jump in the screen band the anchor is in.
+//     So when the stem tears, the leaf on that spot jumps with it.
 //   - whole-plant glitch 整体故障 (spec.plantAnimation): one set of tearing bands shared by every part, so the
 //     plant tears as one picture. A part's own glitch uses its own random bands (seeded per part).
 // Shadows don't follow the motion (the shadow pass uses three's own depth material).
@@ -36,11 +39,15 @@ export interface AnimUniforms {
   uAnWTime: { value: number };
   uAnWGlitch: { value: number };
   uAnWBand: { value: number };
+  uAnSGlitch: { value: number };
+  uAnSBand: { value: number };
 }
 
 /** What acts on the whole plant (see top of file). */
 export interface PlantMotion {
   stemSway: number; // the stem's sway amount (0 = none), followed by every non-stem part
+  stemGlitch: number; // the stem's glitch amount (0 = none), followed by every non-stem part
+  stemGlitchBlock: number;
   stemSpeed: number;
   stemLength: number;
   whole: PlantAnimationSpec; // whole-plant glitch
@@ -48,9 +55,18 @@ export interface PlantMotion {
 
 const HEADER = /* glsl */ `
 uniform float uAnTime, uAnSway, uAnPulse, uAnGlitch, uAnBand, uAnSize, uAnPlantTime, uAnStemSway, uAnStemLen, uAnSeed;
-uniform float uAnWTime, uAnWGlitch, uAnWBand;
+uniform float uAnWTime, uAnWGlitch, uAnWBand, uAnSGlitch, uAnSBand;
 uniform vec2 uAnRes;
 float anHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+// The stem's sway offset at plant-space height y (same formula as the stem itself, ANIM_KIND 0 in MOVE).
+vec3 anStemSway(float y) {
+  float h = clamp(y / uAnStemLen, 0.0, 1.0); h *= h;
+  return vec3(uAnStemSway * 0.12 * uAnStemLen * h * sin(uAnPlantTime * 1.3), 0.0,
+              uAnStemSway * 0.08 * uAnStemLen * h * sin(uAnPlantTime * 1.7 + 1.0));
+}
+#ifdef ANIM_FOLLOW
+  attribute vec3 anchor; // where this copy is attached to the stem (plant space)
+#endif
 `;
 
 // After <begin_vertex>: `transformed` is the vertex in the part's own space (attach point = origin).
@@ -83,23 +99,25 @@ const MOVE = /* glsl */ `
 }
 `;
 
-// After <project_vertex>: follow the stem's sway, using the vertex height in plant space (same formula as the
-// stem itself in MOVE, ANIM_KIND 0).
-const PLANT = /* glsl */ `
+// After <project_vertex>: move rigidly with the stem at the anchor point (sway offset, then the stem's glitch jump
+// in the anchor's screen band — the same band/seed/time test the stem's own TEAR_PART uses, seed 1 = stem).
+const FOLLOW = /* glsl */ `
 {
-  vec4 anP = vec4(transformed, 1.0);
-  #ifdef USE_INSTANCING
-    anP = instanceMatrix * anP;
-  #endif
-  float anH = clamp(anP.y / uAnStemLen, 0.0, 1.0); anH *= anH;
-  vec3 anO = vec3(uAnStemSway * 0.12 * uAnStemLen * anH * sin(uAnPlantTime * 1.3), 0.0,
-                  uAnStemSway * 0.08 * uAnStemLen * anH * sin(uAnPlantTime * 1.7 + 1.0));
+  vec3 anO = anStemSway(anchor.y);
   mvPosition.xyz += (modelViewMatrix * vec4(anO, 0.0)).xyz;
   gl_Position = projectionMatrix * mvPosition;
+  #ifdef ANIM_STEM_GLITCH
+    vec4 anC = projectionMatrix * modelViewMatrix * vec4(anchor + anO, 1.0);
+    float anSt = floor(uAnPlantTime * 10.0);
+    float anB = floor((anC.y / anC.w * 0.5 + 0.5) * uAnRes.y / uAnSBand) + 101.0;
+    if (anHash(vec2(anB, anSt)) < uAnSGlitch * 0.5) {
+      gl_Position.x += (anHash(vec2(anB + 7.0, anSt)) - 0.5) * uAnSGlitch * 0.6 * gl_Position.w;
+    }
+  #endif
 }
 `;
 
-// After <project_vertex> (and PLANT): glitch tearing in screen space. Some horizontal screen bands jump sideways
+// After <project_vertex> (and FOLLOW): glitch tearing in screen space. Some horizontal screen bands jump sideways
 // for one time step. The part's own glitch is seeded per part; the whole-plant one is the same for all parts.
 function tear(amount: string, band: string, time: string, seed: string) {
   return /* glsl */ `
@@ -134,9 +152,10 @@ export function applyAnimation(
 ) {
   const amt = (t: AnimationSpec["type"]) => (a.type === t ? a.amount : 0);
   const sway = amt("sway"), pulse = amt("pulse"), glitch = amt("glitch");
-  const followSway = follow && plant.stemSway > 0;
+  const followStem = follow && (plant.stemSway > 0 || plant.stemGlitch > 0);
+  const stemGlitch = followStem && plant.stemGlitch > 0;
   const whole = plant.whole.glitch > 0;
-  if (sway + pulse + glitch === 0 && !followSway && !whole) return;
+  if (sway + pulse + glitch === 0 && !followStem && !whole) return;
   const band = (b: number) => (6 + b * 90) * (typeof window === "undefined" ? 1 : window.devicePixelRatio || 1);
   const u: AnimUniforms = {
     uAnTime: { value: 0 },
@@ -147,12 +166,14 @@ export function applyAnimation(
     uAnSize: { value: Math.max(size, 1e-3) },
     uAnRes: { value: new THREE.Vector2(1, 1) },
     uAnPlantTime: { value: 0 },
-    uAnStemSway: { value: followSway ? plant.stemSway : 0 },
+    uAnStemSway: { value: followStem ? plant.stemSway : 0 },
     uAnStemLen: { value: Math.max(plant.stemLength, 1e-3) },
     uAnSeed: { value: SEED[part] },
     uAnWTime: { value: 0 },
     uAnWGlitch: { value: plant.whole.glitch },
     uAnWBand: { value: band(plant.whole.glitchBlock) },
+    uAnSGlitch: { value: plant.stemGlitch },
+    uAnSBand: { value: band(plant.stemGlitchBlock) },
   };
   material.userData.plantSpeed = plant.stemSpeed;
   material.userData.wholeSpeed = plant.whole.speed;
@@ -162,15 +183,15 @@ export function applyAnimation(
     prev(shader, renderer);
     Object.assign(shader.uniforms, u);
     shader.vertexShader = shader.vertexShader
-      .replace("#include <common>", `#include <common>\n#define ANIM_KIND ${KIND[kind]}\n${HEADER}`)
+      .replace("#include <common>", `#include <common>\n#define ANIM_KIND ${KIND[kind]}\n${followStem ? "#define ANIM_FOLLOW\n" : ""}${stemGlitch ? "#define ANIM_STEM_GLITCH\n" : ""}${HEADER}`)
       .replace("#include <begin_vertex>", `#include <begin_vertex>\n${MOVE}`)
       .replace(
         "#include <project_vertex>",
-        `#include <project_vertex>\n${followSway ? PLANT : ""}\n${glitch > 0 ? TEAR_PART : ""}\n${whole ? TEAR_WHOLE : ""}`,
+        `#include <project_vertex>\n${followStem ? FOLLOW : ""}\n${glitch > 0 ? TEAR_PART : ""}\n${whole ? TEAR_WHOLE : ""}`,
       );
   };
   // Different code per kind / plant sway / glitch on-off → different compiled program.
-  const key = `anim-${kind}-${followSway ? 1 : 0}-${glitch > 0 ? 1 : 0}-${whole ? 1 : 0}`;
+  const key = `anim-${kind}-${followStem ? 1 : 0}${stemGlitch ? 1 : 0}-${glitch > 0 ? 1 : 0}-${whole ? 1 : 0}`;
   material.customProgramCacheKey = () => key;
   material.needsUpdate = true;
 }

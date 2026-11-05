@@ -65,10 +65,11 @@ These were not in the user's list. They were added because the 3D needs them; re
     Stripe Width, Block Height, Accents, Grain). Looks closest to the reference with
     08 Scene background ≈ #a4a4a4 and Ground hidden.
 - **Animation 动画** (works with every material): each part picks **one** Motion 动态 that moves only that part
-  (user request) — None 静止 / Sway 摇摆 (bends from where the part attaches; the stem's sway moves the whole plant
-  so parts stay attached) / Pulse 呼吸 (grows/shrinks; on the stem a bulge travels up) / Glitch 故障 (this part's
+  (user request) — None 静止 / Sway 摇摆 (bends from where the part attaches) / Pulse 呼吸 (grows/shrinks; on the stem a bulge travels up) / Glitch 故障 (this part's
   own screen bands jump sideways, + Glitch Bands height) / Pattern 图案流动 (Dream bands flow / Glitch blocks
   re-roll; only offered for Dream & Glitch materials). Then Amount 强度 and Speed 速度. Still by default.
+  **Parts stay connected (user request):** whatever the stem does (Sway, Glitch), everything attached to it —
+  leaves, buds, flower heads (receptacle, sepals, petals, center) — moves by the same amount at its attach point.
 - **07 Whole Plant Animation 整体动画**: Glitch 整体故障 tears every part together along shared bands (Bands
   height, Speed), on top of each part's own motion.
 - **08 Scene 场景**: Background color, Ground show/hide.

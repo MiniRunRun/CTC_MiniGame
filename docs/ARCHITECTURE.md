@@ -98,13 +98,18 @@ small JSON file, which the garden can reuse later.
   amount, glitchBlock, speed }` per part (same keys as materials) — one motion per part. Whole-plant glitch is
   `spec.plantAnimation { glitch, glitchBlock, speed }`, passed to every part as `PlantMotion.whole`; its tearing
   uses shared bands (seed 0), while a part's own glitch is seeded per part (uAnSeed) so only that part tears.
-  Receptacles use the stem's animation but follow (instead of repeating) its sway.
+  Receptacles use the stem's animation but follow (instead of repeating) its sway/glitch.
+  **Following the stem:** `assemble()` also returns `anchors[list]` — each copy's attach point on the stem
+  (flower parts → flower position, bud sepals → bud position, leaves → leaf position). `<Instances>` writes them as
+  an `anchor` InstancedBufferAttribute on the geometry. Non-stem parts (ANIM_FOLLOW) add the stem's sway offset at
+  anchor.y, then (ANIM_STEM_GLITCH) project the anchor and apply the stem's glitch test for that screen band
+  (same seed 1, band, time as the stem's own tear), shifting the whole copy rigidly. Stem pulse is not followed
+  (its bulge is ≤ 1 cm).
   `buildPartMaterials(m, info, anim)` builds the material, then
   `applyAnimation()` adds `onBeforeCompile` code to it — after `#include <begin_vertex>` (sway/pulse in part-local
   space; kind stem = bend by height, blade = flap along local Y by x/len, blob = wobble by distance; per-instance
-  phase from instanceMatrix[3]) and after `#include <project_vertex>` (plant sway: every non-stem part adds the
-  stem's bend at its plant-space height and re-projects, so it stays attached; then glitch tearing per screen
-  band). Works on MeshStandard / MeshMatcap / our ShaderMaterials alike. Uniforms live in
+  phase from instanceMatrix[3]) and after `#include <project_vertex>` (follow the stem — see below; then glitch
+  tearing per screen band). Works on MeshStandard / MeshMatcap / our ShaderMaterials alike. Uniforms live in
   `material.userData.anim`; `Plant.tsx` useFrame sets uAnTime = t·speed·2, uAnPlantTime (stem speed), uAnWTime
   (whole-plant speed), uAnRes, and for ShaderMaterials uTime = t·amount·speed when type = pattern (else 0). No program change when only pattern motion is on. Shadows
   don't animate (the depth pass uses three's own material).

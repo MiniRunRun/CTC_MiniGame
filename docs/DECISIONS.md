@@ -13,6 +13,17 @@ Template:
 
 ---
 
+## 2026-11-05 — Attached parts follow the stem via a per-copy anchor attribute
+
+**Choice:** `assemble()` records each copy's attach point on the stem; the shader re-runs the stem's motion at
+that point (sway offset + the stem's glitch band test) and moves the whole copy rigidly.
+**Why:** Glitch tearing is per screen band, so a leaf must jump exactly when the stem's band at its attach point
+jumps. Evaluating the stem's own formula at the anchor keeps them in sync with no CPU work per frame.
+**Alternatives considered:** a scene-graph hierarchy with per-frame CPU matrices (can't reproduce screen-band
+tearing, and costs per frame); using each vertex's own band (tears leaves apart instead of carrying them).
+
+---
+
 ## 2026-11-05 — One motion per part, plus a whole-plant glitch
 
 **Choice:** Replaced the mixable amount sliders with one `type` per part (+ amount, speed). Per-part glitch bands

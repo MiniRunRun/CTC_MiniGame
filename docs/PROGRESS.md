@@ -13,6 +13,20 @@ Template:
 
 ---
 
+## 2026-11-05 — Parts follow the stem's animation (incl. glitch)
+
+**Done:**
+- User: each part's animation must stay connected — e.g. when the stem glitches, leaves must move with it.
+- Every copy of a part now knows its attach point on the stem (`Assembly.anchors`, `anchor` instance attribute).
+  When the stem sways or glitches, leaves, buds and whole flower heads move rigidly by what the stem does at that
+  point (same screen band test as the stem's tear). Receptacles follow instead of tearing on their own.
+- Tested: stem glitch → flower head and bud jump with the torn stem section; stem sway still keeps parts on.
+
+**Not finished / known issues:** Stem Pulse isn't followed (≤ 1 cm bulge). Parts attached to other non-stem
+parts (e.g. petals on sepals) don't follow each other — they only follow the stem. Shadows don't animate.
+
+---
+
 ## 2026-11-05 — One motion per part + whole-plant glitch
 
 **Done:**
