@@ -13,6 +13,18 @@ Template:
 
 ---
 
+## 2026-11-05 — Cube build works on finished geometry, one cube per grid cell
+
+**Choice:** Cubes are made from each part's finished geometry (surface sampling + one cube per cell of the cube
+size), not from per-part parametric code. Stored as `spec.cubes[part]`, separate from shape settings.
+**Why:** One function covers every part (petals, leaves, stem tube, buds, centers, fused flowers) and always
+follows the current shape, curvature and drawn outlines. Cell bucketing gives even tiling and merges the two faces
+of thin blades. Staying in part space keeps materials and animation working unchanged.
+**Alternatives considered:** instancing one cube mesh per cube (needs nested instancing per part copy); laying
+cubes on each blade's (u, v) grid (only works for blades, not stem/center/buds).
+
+---
+
 ## 2026-11-05 — Attached parts follow the stem via a per-copy anchor attribute
 
 **Choice:** `assemble()` records each copy's attach point on the stem; the shader re-runs the stem's motion at

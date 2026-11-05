@@ -8,7 +8,7 @@ import { petalWidth } from "../plant/petal";
 import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
-import type { AnimationSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
+import type { AnimationSpec, CubeSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -38,6 +38,46 @@ function Category(props: { en: string; zh: string; open?: boolean; children: Rea
   );
 }
 
+/**
+ * Form → Build 构造: smooth surface, or rebuilt from gradient cubes that follow the part's shape (plant/cubes.ts).
+ */
+function CubeControls({ part }: { part: MaterialPart }) {
+  const c = usePlant((st) => st.spec.cubes[part]);
+  const update = usePlant((st) => st.update);
+  const set = (patch: Partial<CubeSpec>) => update("cubes", { [part]: { ...usePlant.getState().spec.cubes[part], ...patch } });
+  const also = part === "stem" ? " (also receptacles 花托)" : part === "sepals" ? " (also buds 花蕾)" : "";
+  return (
+    <div className="subgroup">
+      <Choice
+        label={`Build 构造${also}`}
+        value={c.build}
+        onChange={(build) => set({ build })}
+        options={[
+          { value: "smooth", label: "Smooth 平滑" },
+          { value: "cubes", label: "Cubes 立方体" },
+        ]}
+      />
+      {c.build === "cubes" && (
+        <>
+          <Slider label="Cube Size 立方体大小" value={c.size} min={0.003} max={0.05} step={0.001} format={mm} onChange={(size) => set({ size })} />
+          <Choice
+            label="Align 排列"
+            value={c.align}
+            onChange={(align) => set({ align })}
+            options={[
+              { value: "follow", label: "Follow 顺着走势" },
+              { value: "grid", label: "Grid 网格" },
+            ]}
+          />
+          <Slider label="Gap 间隙" value={c.gap} min={0} max={0.6} step={0.01} format={pct} onChange={(gap) => set({ gap })} />
+          <ColorPicker label="Gradient End 渐变终点色" value={c.color2} onChange={(color2) => set({ color2 })} />
+          <p className="hint">Gradient runs from the part's Color (base) to this color (tip).</p>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** A flower-part section with its four categories. */
 function PartSection(props: {
   num: string;
@@ -52,6 +92,7 @@ function PartSection(props: {
     <Section num={props.num} en={props.en} zh={props.zh} open={props.open}>
       <Category en="Form" zh="形态" open>
         {props.form}
+        <CubeControls part={props.part} />
       </Category>
       <Category en="Material" zh="材质">
         <MaterialControls part={props.part} hasLength={props.hasLength} />

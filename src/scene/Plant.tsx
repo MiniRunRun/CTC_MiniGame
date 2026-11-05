@@ -14,9 +14,10 @@ import { buildCenter } from "../plant/center";
 import { buildLeafGeometry } from "../plant/leaf";
 import { buildBudGeometry, buildSepalGeometry } from "../plant/sepal";
 import { buildFusedFlower } from "../plant/fused";
+import { cubify, type CubeAxis } from "../plant/cubes";
 import { buildPartMaterials, type PartMaterials } from "./partMaterial";
 import type { AnimUniforms } from "./animation";
-import type { AnimationSpec } from "../plant/spec";
+import type { AnimationSpec, CubeSpec } from "../plant/spec";
 
 /** Free GPU memory for geometries/materials we no longer show. */
 function useDisposeOnChange(items: { dispose: () => void }[]) {
@@ -88,18 +89,51 @@ export default function Plant() {
     [layout, spec.petals, spec.center.size, spec.sepals.count],
   );
 
-  // Geometries (one per part type)
-  const petal = useMemo(() => buildPetalGeometry(spec.petals), [spec.petals]);
-  const sepal = useMemo(() => buildSepalGeometry(spec.sepals, spec.petals.size), [spec.sepals, spec.petals.size]);
-  const leaf = useMemo(() => buildLeafGeometry(spec.leaves), [spec.leaves]);
-  const bud = useMemo(() => buildBudGeometry(spec.sepals, spec.petals), [spec.sepals, spec.petals]);
-  const receptacle = useMemo(() => new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10), [spec.stem.thickness]);
-  const center = useMemo(() => buildCenter(spec.center), [spec.center]);
+  // Geometries (one per part type). With Form → Build = Cubes, each is rebuilt from cubes (cubes.ts).
+  const cb = spec.cubes;
+  // The smooth source geometry is freed once cubified (except the stem's, which belongs to the layout).
+  const cube = (on: CubeSpec, color: string, axis: CubeAxis, keepSource = false) => (g: THREE.BufferGeometry) => {
+    if (on.build !== "cubes") return g;
+    const out = cubify(g, { spec: on, color, axis });
+    if (!keepSource) g.dispose();
+    return out;
+  };
+  const petal = useMemo(
+    () => cube(cb.petals, spec.petals.color, "x")(buildPetalGeometry(spec.petals)),
+    [spec.petals, cb.petals],
+  );
+  const sepal = useMemo(
+    () => cube(cb.sepals, spec.sepals.color, "x")(buildSepalGeometry(spec.sepals, spec.petals.size)),
+    [spec.sepals, spec.petals.size, cb.sepals],
+  );
+  const leaf = useMemo(() => cube(cb.leaves, spec.leaves.color, "x")(buildLeafGeometry(spec.leaves)), [spec.leaves, cb.leaves]);
+  const bud = useMemo(
+    () => cube(cb.sepals, spec.petals.color, "y")(buildBudGeometry(spec.sepals, spec.petals)),
+    [spec.sepals, spec.petals, cb.sepals],
+  );
+  const receptacle = useMemo(
+    () => cube(cb.stem, spec.stem.color, "y")(new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10)),
+    [spec.stem.thickness, spec.stem.color, cb.stem],
+  );
+  const center = useMemo(
+    () => buildCenter(spec.center).map((c) => ({ ...c, geometry: cube(cb.center, c.color, "y")(c.geometry) })),
+    [spec.center, cb.center],
+  );
+  const stemGeo = useMemo(
+    () => cube(cb.stem, spec.stem.color, "y", true)(layout.stemGeometry),
+    [layout, cb.stem, spec.stem.color],
+  );
+  // Cube parts carry their colors in the geometry (gradient), so materials must use vertex colors.
+  const stemCubes = cb.stem.build === "cubes";
+  const centerCubes = cb.center.build === "cubes";
   // Fused abstract petals: one melted shape per flower, drawn on every flower head instead of single petals.
   const fusedOn = spec.petals.style === "abstract" && spec.petals.join === "fused";
   const fused = useMemo(
-    () => (fusedOn ? buildFusedFlower(spec.petals, spec.center.size * 0.35, spec.stem.thickness * 1.6) : null),
-    [fusedOn, spec.petals, spec.center.size, spec.stem.thickness],
+    () =>
+      fusedOn
+        ? cube(cb.petals, spec.petals.color, "radial")(buildFusedFlower(spec.petals, spec.center.size * 0.35, spec.stem.thickness * 1.6))
+        : null,
+    [fusedOn, spec.petals, spec.center.size, spec.stem.thickness, cb.petals],
   );
 
   // Materials: each part has its own (natural / pearl / dream), see partMaterial.ts.
@@ -125,11 +159,11 @@ export default function Plant() {
   // Length for the dream "length" input: petal length, or for fused flowers the reach from the axis to the petal tips.
   const petalLen = fused ? spec.center.size * 0.35 + spec.petals.stalk + spec.petals.size : spec.petals.size;
   const stemMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7 }, { spec: anims.stem, part: "stem", kind: "stem", size: spec.stem.length, plant, follow: false }),
-    [mats.stem, spec.stem.color, anims.stem, spec.stem.length, plant],
+    () => buildPartMaterials(mats.stem, stemCubes ? { vertexColors: true, roughness: 0.7 } : { color: spec.stem.color, roughness: 0.7 }, { spec: anims.stem, part: "stem", kind: "stem", size: spec.stem.length, plant, follow: false }),
+    [mats.stem, spec.stem.color, anims.stem, spec.stem.length, plant, stemCubes],
   );
   const receptacleMat = useMemo(
-    () => buildPartMaterials(mats.stem, { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, // receptacles sit on the stem: they follow its sway/glitch instead of doing it on their own
+    () => buildPartMaterials(mats.stem, stemCubes ? { vertexColors: true, roughness: 0.7, haloGeometry: receptacle } : { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle }, // receptacles sit on the stem: they follow its sway/glitch instead of doing it on their own
       { spec: stemSway + stemGlitch > 0 ? { ...anims.stem, type: "none" } : anims.stem, part: "stem", kind: "blob", size: spec.stem.thickness, plant, follow: true }),
     [mats.stem, spec.stem.color, receptacle, anims.stem, spec.stem.thickness, plant],
   );
@@ -150,12 +184,13 @@ export default function Plant() {
     [mats.sepals, bud, anims.sepals, spec.petals.size, plant],
   );
   const centerMats = useMemo(
-    () => center.map((c) => buildPartMaterials(mats.center, { color: c.color, roughness: 0.8, haloGeometry: c.geometry }, { spec: anims.center, part: "center", follow: true, kind: "blob", size: Math.max(spec.center.size, spec.center.height), plant })),
-    [center, mats.center, anims.center, spec.center.size, spec.center.height, plant],
+    () => center.map((c) => buildPartMaterials(mats.center, centerCubes ? { vertexColors: true, roughness: 0.8, haloGeometry: c.geometry } : { color: c.color, roughness: 0.8, haloGeometry: c.geometry }, { spec: anims.center, part: "center", follow: true, kind: "blob", size: Math.max(spec.center.size, spec.center.height), plant })),
+    [center, mats.center, anims.center, spec.center.size, spec.center.height, plant, centerCubes],
   );
   const allMats = [stemMat, receptacleMat, leafMat, petalMat, sepalMat, budMat, ...centerMats];
 
   useDisposeOnChange(useMemo(() => [layout.stemGeometry], [layout]));
+  useDisposeOnChange(useMemo(() => (stemGeo !== layout.stemGeometry ? [stemGeo] : []), [stemGeo, layout]));
   useDisposeOnChange(useMemo(() => [petal], [petal]));
   useDisposeOnChange(useMemo(() => [sepal], [sepal]));
   useDisposeOnChange(useMemo(() => [leaf], [leaf]));
@@ -194,7 +229,7 @@ export default function Plant() {
 
   return (
     <group>
-      <mesh geometry={layout.stemGeometry} material={stemMat.material} castShadow />
+      <mesh geometry={stemGeo} material={stemMat.material} castShadow />
       <Part geometry={leaf} mats={leafMat} matrices={parts.leaves} anchors={parts.anchors.leaves} />
       <Part geometry={receptacle} mats={receptacleMat} matrices={parts.receptacles} anchors={parts.anchors.receptacles} />
       <Part geometry={sepal} mats={sepalMat} matrices={parts.sepals} anchors={parts.anchors.sepals} />

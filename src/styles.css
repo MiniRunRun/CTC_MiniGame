@@ -88,3 +88,4 @@ body {
 .category summary { cursor: pointer; padding: 8px 0; font-size: 13px; color: #cfd1d6; }
 .category .zh { color: #9a9ca3; }
 .category-body { display: grid; gap: 10px; padding-bottom: 8px; }
+.subgroup { display: grid; gap: inherit; border-top: 1px dashed #3a3d44; padding-top: 10px; }

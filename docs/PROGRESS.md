@@ -13,6 +13,23 @@ Template:
 
 ---
 
+## 2026-11-05 — Form → Build: parts made of gradient cubes (立方体构造)
+
+**Done:**
+- User: new Form option — each petal assembled from gradient-colored cubes whose positions follow the petal's
+  shape; same for the other parts.
+- `src/plant/cubes.ts` `cubify()` works on any finished part geometry; `spec.cubes[part]` = { build, size,
+  align (follow / grid), gap, color2 }. Every part's Form category ends with Build 构造 (Smooth / Cubes) + Cube
+  Size, Align, Gap, Gradient End.
+- Tested: all five parts as cubes (petals pink→cream, stem/leaves green→light green), no console errors; switching
+  all five takes ~2 s total in the throttled preview browser.
+
+**Not finished / known issues:** very small cube sizes on the stem make many cubes (slower rebuild). The stem's
+gradient runs bottom→top over the whole plant height. Cubes don't cast per-cube detail in the halo shell (it's the
+same cube geometry enlarged).
+
+---
+
 ## 2026-11-05 — Parts follow the stem's animation (incl. glitch)
 
 **Done:**

@@ -94,6 +94,14 @@ small JSON file, which the garden can reuse later.
   `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
   (fract(l·levels) near 0/1) in random bands and in random blocks. Random choices use step = floor(uTime·10), so
   with pattern motion they re-roll; with uTime 0 it's a still image. Tearing moved to Animation.
+- **Cube build (`spec.cubes[part]`, `src/plant/cubes.ts`):** `cubify(geometry, {spec, color, axis})` scatters
+  points over every triangle (by area, deterministic RNG), buckets them into cells of the cube size (one cube per
+  cell; thin blades' two faces merge), then places a cube per cell — follow: at the averaged point, basis =
+  (part length direction projected on the surface, averaged normal); grid: cell center, axis-aligned. Corner
+  colors = lerp(color, color2) by position along the axis (x blades, y stem/bud/center, radial for fused), so
+  materials need vertexColors (Plant.tsx switches stem/center to vertex colors when cubed). Output stays in part
+  space, so materials/animation are unchanged. Plant.tsx wraps each geometry memo with it and frees the smooth
+  source (not the stem's, which the layout owns).
 - **Animation per part (`spec.animations`, `src/scene/animation.ts`):** `{ type: none|sway|pulse|glitch|pattern,
   amount, glitchBlock, speed }` per part (same keys as materials) — one motion per part. Whole-plant glitch is
   `spec.plantAnimation { glitch, glitchBlock, speed }`, passed to every part as `PlantMotion.whole`; its tearing

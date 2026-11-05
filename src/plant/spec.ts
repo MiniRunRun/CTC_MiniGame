@@ -95,6 +95,18 @@ export interface ArchitectureSpec {
 }
 
 /**
+ * Build per part (构造, part of Form 形态): smooth = the normal surface; cubes = the surface rebuilt from small
+ * gradient-colored cubes that follow the part's shape (see cubes.ts). Same parts as materials.
+ */
+export interface CubeSpec {
+  build: "smooth" | "cubes";
+  size: number; // cube edge, 0.003 – 0.05 m
+  align: "follow" | "grid"; // 顺着走势: cubes lie on the surface along the part / 网格: axis-aligned voxels
+  gap: number; // 0 – 0.6, space between cubes (fraction of the cube size)
+  color2: string; // gradient end color (start = the part's own color), base → tip
+}
+
+/**
  * Material per part (材质). Every part (stem, leaves, petals, center, sepals & buds) has its own:
  *   natural = lit by the scene lights (MeshStandardMaterial)
  *   pearl   = stylized "painted light" from a generated matcap (scene/matcap.ts)
@@ -206,6 +218,7 @@ export interface PlantSpec {
   architecture: ArchitectureSpec;
   materials: Record<MaterialPart, MaterialSpec>;
   animations: Record<MaterialPart, AnimationSpec>; // same parts as materials
+  cubes: Record<MaterialPart, CubeSpec>; // Form → Build (smooth / cubes) per part
   plantAnimation: PlantAnimationSpec;
   scene: SceneSpec;
   effect: EffectSpec;
@@ -254,6 +267,11 @@ function material(halo: number): MaterialSpec {
       grain: 0.4,
     },
   };
+}
+
+/** Default build: smooth, with cube settings ready for when the player switches. */
+function cubes(size: number, color2: string): CubeSpec {
+  return { build: "smooth", size, align: "follow", gap: 0.1, color2 };
 }
 
 /** Default animation: everything still. */
@@ -342,6 +360,13 @@ export const DEFAULT_SPEC: PlantSpec = {
     sepals: animation(),
   },
   plantAnimation: { glitch: 0, glitchBlock: 0.4, speed: 0.5 },
+  cubes: {
+    stem: cubes(0.012, "#b8e07a"),
+    leaves: cubes(0.01, "#d9f2a6"),
+    petals: cubes(0.012, "#fff1c9"),
+    center: cubes(0.008, "#ff8a3d"),
+    sepals: cubes(0.007, "#d9f2a6"),
+  },
   scene: {
     background: "#1d1f24",
     ground: true,
