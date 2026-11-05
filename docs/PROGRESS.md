@@ -13,6 +13,16 @@ Template:
 
 ---
 
+## 2026-11-05 — Code review: restructure proposal (no code change)
+
+**Done:** User asked to research how to optimize the workflow, since e.g. ellipsoid petals and cube builds are the
+same category. Reviewed the code; overlaps and a 6-stage per-part pipeline (Shape → Build → Attributes → Color →
+Material → Animation) with 4 phases are written in `docs/WORKFLOW_PLAN.md`.
+
+**Next:** user picks a phase (recommended: 1 then 2).
+
+---
+
 ## 2026-11-05 — Build: Blocks 积木 kept, new Cubes 立方体 (big gradient boxes)
 
 **Done:**

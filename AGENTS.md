@@ -30,6 +30,7 @@ must be in this repository. If it isn't written here, it doesn't exist.
 | `docs/DECISIONS.md` | Why things were done a certain way. **Add an entry for every real choice.** |
 | `docs/GAME_DESIGN.md` | What the game is: rules, controls, art style, goals. |
 | `docs/ARCHITECTURE.md` | How it is built: tech stack, node types, how each flower part becomes 3D, build order. |
+| `docs/WORKFLOW_PLAN.md` | Proposed restructure (one 6-stage pipeline per part) and its phases. Check status before refactoring. |
 | `README.md` | Short public description for humans visiting the repo. |
 | `CLAUDE.md` | Points Claude Code to this file. |
 
