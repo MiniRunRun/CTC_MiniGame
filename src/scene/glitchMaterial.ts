@@ -10,6 +10,7 @@
 // Works with InstancedMesh for the same reason as dreamMaterial.ts (three.js chunks handle instanceMatrix).
 import * as THREE from "three";
 import type { GlitchSpec } from "../plant/spec";
+import { HASH } from "./glsl";
 
 const vertexShader = /* glsl */ `
 #include <common>
@@ -29,7 +30,7 @@ uniform vec3 uDark, uMid, uLight, uAccent, uAccent2;
 uniform float uLevels, uStripes, uStripePx, uAccents, uGrain, uTime, uBandPx;
 varying vec3 vNormalV;
 varying vec3 vViewPos;
-float h21(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+${HASH}
 
 void main() {
   vec3 n = normalize(vNormalV);
@@ -40,7 +41,7 @@ void main() {
   vec2 px = gl_FragCoord.xy;
   float step_ = floor(uTime * 10.0);
   float band = floor(px.y / uBandPx);
-  l += (h21(px + fract(uTime) * 91.0) - 0.5) * uGrain * 0.25; // grain before posterizing → speckled edges
+  l += (hash21(px + fract(uTime) * 91.0) - 0.5) * uGrain * 0.25; // grain before posterizing → speckled edges
   l = clamp(l, 0.0, 0.999);
 
   // 1. grey levels
@@ -49,7 +50,7 @@ void main() {
 
   // 2. stripes: on the brightest level, and on whole random bands
   if (uStripes > 0.0) {
-    bool bandOn = h21(vec2(band + 3.0, step_)) < uStripes * 0.5;
+    bool bandOn = hash21(vec2(band + 3.0, step_)) < uStripes * 0.5;
     if (bandOn || k > 0.99) {
       float s = step(0.5, fract(px.x / uStripePx));
       col = mix(col, s > 0.5 ? uLight : uMid, bandOn ? 1.0 : uStripes);
@@ -57,14 +58,14 @@ void main() {
   }
 
   // 4. accents: on the edges between grey levels (in some bands) and in random blocks
-  vec3 acc = mix(uAccent, uAccent2, step(0.5, h21(vec2(floor(px.x / (uBandPx * 2.0)), band))));
+  vec3 acc = mix(uAccent, uAccent2, step(0.5, hash21(vec2(floor(px.x / (uBandPx * 2.0)), band))));
   float e = fract(l * uLevels);
-  if ((e < 0.12 || e > 0.88) && h21(vec2(band, step_ + 5.0)) < uAccents) col = acc;
+  if ((e < 0.12 || e > 0.88) && hash21(vec2(band, step_ + 5.0)) < uAccents) col = acc;
   vec2 cell = floor(px / vec2(uBandPx * 3.0, uBandPx));
-  if (h21(cell + step_ * 0.37) < uAccents * 0.12) col = mix(col, acc, 0.85);
+  if (hash21(cell + step_ * 0.37) < uAccents * 0.12) col = mix(col, acc, 0.85);
 
   // 5. grain on top
-  col += (h21(px * 1.7 + step_) - 0.5) * uGrain * 0.08;
+  col += (hash21(px * 1.7 + step_) - 0.5) * uGrain * 0.08;
   gl_FragColor = vec4(col, 1.0);
   #include <colorspace_fragment>
 }`;

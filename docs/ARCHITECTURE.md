@@ -66,16 +66,25 @@ small JSON file, which the garden can reuse later.
   - *curvature* bends it along its length,
   - *cupping* bends it across its width,
   - *spread* rotates it open from the center.
-- **Abstract petals (`src/plant/abstract.ts`):** when `petals.style = "abstract"`, the petal geometry is a three.js
-  primitive fit into a box (length = size along +X from the origin, width/thickness as fractions of size), bent by
-  curvature, normals recomputed (flat for gem/cube, welded smooth for the rest), and vertex-colored between
-  `color` and `color2` by facing (normal.y) or by length, optionally repeated as bands. `petalPlacements` stacks
-  abstract layers as identical rings offset by `layerGap`.
-- **Fused abstract flower (`src/plant/fused.ts`):** `petals.join = "fused"`. Signed distance pieces — a center
-  ball, an ellipsoid per petal (same ring as abstract petals, radius + `stalk`), a tapered stalk from the center to
-  each petal — are smooth-min blended (`blend` → radius) into a `detail`³ grid, each piece only over its bounding
-  box. three.js `MarchingCubes` (field = −distance, isolation 0) makes the triangles, which are copied into a plain
-  geometry with vertex colors (`color` near the center → `color2` on the petals) and instanced on `parts.heads`.
+- **Build (`spec.builds[part]`, `src/plant/build.ts`):** `buildPart(geometry, {spec, color, axis})` for
+  mode pieces / fused. Steps: area-sampled surface points → slots (grid cells of part length ÷ count; count 1 =
+  one slot, area-weighted) → one piece per slot (average point + normal → basis with X along the part's axis
+  [x blades, y stem/bud/center/receptacle], or grid cell center; size = slot·scale·(1, thickness, width) ×
+  variation; random tilt) → pieces: unit primitive templates (normalized to −0.5…0.5, cached; cube uses 8×8×8
+  segments only for palette gradients) written into one geometry; fused: `ellipsoidPiece` per piece → `melt()`
+  (k = blend·avg size·0.8) with corner colors blended from nearby pieces (1/d⁴, far pieces skipped). Colors
+  (`colorBy`): part = average source vertex color per piece; along / facing = color→color2 with `pingpong(bands)`;
+  piece = `sampleRamp(palette, wrap01(start + gradient·local·dir·1.6))`. Presets: `buildPreset()` in spec.ts.
+  `Plant.tsx` wraps every geometry memo with it and frees the smooth source (not the stem's, owned by the layout);
+  rebuilt stem/center switch their materials to vertex colors.
+- **Fused (`src/plant/fused.ts`):** SDF pieces (`ballPiece`, `ellipsoidPiece`, `stalkPiece`) smooth-min blended on
+  a detail³ grid by `melt()`, each piece only over its bounding box; three.js `MarchingCubes` (field = −distance,
+  isolation 0, cached per resolution) makes the triangles. `buildFusedFlower(petals, build, …)` = whole-flower
+  fusion (center ball + ellipsoid per petal on the petal ring pushed out by `stalk` + tapered stalks), vertex colors
+  petal color → color2 radially, instanced on `parts.heads` (Dream "length" is radial then).
+- **Shared helpers:** `src/plant/ramp.ts` (`pingpong`, `sampleRamp`, `wrap01`) for builders; `src/scene/glsl.ts`
+  (`HASH`, `NOISE`, `PINGPONG`, `ramp5(name)`) pasted into every shader (dream, glitch, animation, Effects);
+  `RampEditor` in `src/ui/controls.tsx` for every color ramp/palette in the panel.
 - **Materials per part (`spec.materials`, `src/scene/partMaterial.ts`):** `materials.stem | leaves | petals |
   center | sepals` each hold `{ type, pearl, dream }`. They're kept outside the part specs so a material change
   never rebuilds geometry. `buildPartMaterials(spec, info)` returns `{ material, halo, disposables }`; the stem's
@@ -94,18 +103,6 @@ small JSON file, which the garden can reuse later.
   `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
   (fract(l·levels) near 0/1) in random bands and in random blocks. Random choices use step = floor(uTime·10), so
   with pattern motion they re-roll; with uTime 0 it's a still image. Tearing moved to Animation.
-- **Box builds (`spec.cubes[part]`, `src/plant/cubes.ts`):** `cubify()` picks `buildBlocks` or `buildCubes`.
-  Cubes: cell = part length ÷ count, same surface sampling; per box a deterministic random tilt (≤ ~40°·tilt),
-  size ×(1 + variation·rand), a palette start and gradient direction; corner colors = palette(start +
-  gradient·(local·dir)·1.6), ping-pong over 5 stops, on an 8×8×8-segment box so the gradient shows inside faces.
-  Blocks: `buildBlocks` scatters
-  points over every triangle (by area, deterministic RNG), buckets them into cells of the cube size (one cube per
-  cell; thin blades' two faces merge), then places a cube per cell — follow: at the averaged point, basis =
-  (part length direction projected on the surface, averaged normal); grid: cell center, axis-aligned. Corner
-  colors = lerp(color, color2) by position along the axis (x blades, y stem/bud/center, radial for fused), so
-  materials need vertexColors (Plant.tsx switches stem/center to vertex colors when cubed). Output stays in part
-  space, so materials/animation are unchanged. Plant.tsx wraps each geometry memo with it and frees the smooth
-  source (not the stem's, which the layout owns).
 - **Animation per part (`spec.animations`, `src/scene/animation.ts`):** `{ type: none|sway|pulse|glitch|pattern,
   amount, glitchBlock, speed }` per part (same keys as materials) — one motion per part. Whole-plant glitch is
   `spec.plantAnimation { glitch, glitchBlock, speed }`, passed to every part as `PlantMotion.whole`; its tearing

@@ -1,4 +1,4 @@
-// Reusable panel controls: slider, option buttons, color picker.
+// Reusable panel controls: slider, option buttons, color picker, color ramp.
 
 interface SliderProps {
   label: string;
@@ -64,6 +64,31 @@ export function ColorPicker({ label, value, onChange }: { label: string; value: 
       <input type="color" value={value} onChange={(e) => onChange(e.target.value)} />
       <span className="ctl-value">{value}</span>
     </label>
+  );
+}
+
+/**
+ * Color ramp editor: a preview strip plus one color picker per stop. Used for every ramp/palette in the panel
+ * (Dream material, screen Effect, piece palettes). `names` labels the stops (defaults to 1, 2, 3…).
+ */
+export function RampEditor({ label, colors, names, onChange }: {
+  label: string;
+  colors: string[];
+  names?: string[];
+  onChange: (colors: string[]) => void;
+}) {
+  return (
+    <>
+      <div className="ramp-preview" title={label} style={{ background: `linear-gradient(90deg, ${colors.join(", ")})` }} />
+      {colors.map((c, i) => (
+        <ColorPicker
+          key={i}
+          label={`${label} ${names?.[i] ?? i + 1}`}
+          value={c}
+          onChange={(v) => onChange(colors.map((x, k) => (k === i ? v : x)))}
+        />
+      ))}
+    </>
   );
 }
 

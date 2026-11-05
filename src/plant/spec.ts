@@ -30,14 +30,6 @@ export interface LeafSpec {
 }
 
 export type PetalShape = "round" | "pointed" | "wavy" | "drawn";
-/** natural = thin bendable blade; abstract = each petal replaced by a 3D primitive (see abstract.ts). */
-export type PetalStyle = "natural" | "abstract";
-export type Primitive = "sphere" | "gem" | "cube" | "cone" | "torus" | "capsule";
-/** How the two abstract colors blend: along the petal (base → tip) or by facing (top → underside). */
-export type GradientMode = "length" | "facing";
-/** separate = one primitive per petal; fused = petals + stalks melted into one blobby shape (see fused.ts). */
-export type PetalJoin = "separate" | "fused";
-
 export interface PetalSpec {
   shape: PetalShape;
   count: number; // per layer, 3 – 24
@@ -47,21 +39,10 @@ export interface PetalSpec {
   spread: number; // opening angle from the stem axis: 10° closed – 120° drooping
   color: string;
   drawn: number[]; // width profile used when shape = "drawn"
-  // Abstract style (抽象几何). Only used when style = "abstract"; shape is ignored then.
-  style: PetalStyle;
-  primitive: Primitive;
-  width: number; // primitive width as a fraction of petal length, 0.1 – 1.5
-  thickness: number; // primitive thickness as a fraction of petal length, 0.05 – 1.5
+  // Layering. stacked = every layer an identical ring moved up/down by layerGap (the user's Blender reference);
+  // natural = inner layers smaller, more closed and turned.
+  stack: boolean;
   layerGap: number; // vertical distance between stacked layers (negative stacks downward), -0.15 – 0.15
-  gradient: GradientMode;
-  bands: number; // how many times the gradient repeats, 1 – 6 (more = striped)
-  color2: string; // second gradient color (the first is `color`)
-  // Fused (融合) — only when style = "abstract" and join = "fused".
-  join: PetalJoin;
-  stalk: number; // stalk length from the center to each petal, 0 – 0.3 m
-  stalkWidth: number; // stalk radius at the center, 0.002 – 0.04 m (tapers toward the petal)
-  blend: number; // how round the joins are, 0 (sharp) – 1 (very melted)
-  detail: number; // mesh resolution, 32 – 96 (higher = smoother, slower)
 }
 
 export type CenterType = "disc" | "column" | "stamens";
@@ -95,24 +76,53 @@ export interface ArchitectureSpec {
 }
 
 /**
- * Build per part (构造, part of Form 形态), see cubes.ts. Same parts as materials.
+ * Build per part (构成, part of Form 形态), see build.ts. Same parts as materials.
  *   smooth = the normal surface
- *   blocks 积木 = many small equal cubes tiling the surface, one gradient along the whole part
- *   cubes 立方体 = few big boxes of mixed sizes, each with its own full 5-color gradient
+ *   pieces 拼块 = the part rebuilt from primitives scattered along its surface (copy-to-points). One system for
+ *                 what used to be three: abstract petals (1 piece fitted to the part), Blocks 积木 (many small
+ *                 cubes) and Cubes 立方体 (few big tilted gradient boxes) — those are now presets.
+ *   fused 融合  = the same pieces as ellipsoids, melted together into one smooth blob (fused.ts). For petals,
+ *                 `flower` melts the whole flower instead (all petals + stalks + a center ball).
  */
-export interface CubeSpec {
-  build: "smooth" | "blocks" | "cubes";
-  // Blocks
-  size: number; // cube edge, 0.003 – 0.05 m
-  align: "follow" | "grid"; // 顺着走势: cubes lie on the surface along the part / 网格: axis-aligned voxels
-  gap: number; // 0 – 0.6, space between cubes (fraction of the cube size)
-  color2: string; // gradient end color (start = the part's own color), base → tip
-  // Cubes
-  count: number; // 1 – 24, about how many boxes along the part's length (fewer = bigger boxes)
-  variation: number; // 0 – 1, how different box sizes/proportions are
-  tilt: number; // 0 – 1, random turn of each box away from the surface
-  gradient: number; // 0 (flat color per box) – 1 (full gradient across each box)
-  palette: string[]; // 5 colors; each box starts somewhere different in it
+export type Primitive = "cube" | "sphere" | "gem" | "cone" | "torus" | "capsule";
+/** How pieces are colored: part = the part's own colors, along = color → color2 base → tip, facing = color → color2
+ * by which way the surface faces, piece = each piece gets its own gradient from the palette. */
+export type PieceColor = "part" | "along" | "facing" | "piece";
+
+export interface BuildSpec {
+  mode: "smooth" | "pieces" | "fused";
+  primitive: Primitive; // pieces only (fused always uses ellipsoids)
+  count: number; // 1 – 120, pieces along the part's length (1 = one piece fitted to the whole part)
+  scale: number; // 0.3 – 1.6, piece size vs its slot (< 1 leaves gaps, > 1 overlaps)
+  width: number; // 0.1 – 2, piece width vs its length
+  thickness: number; // 0.05 – 2, piece thickness vs its length
+  variation: number; // 0 – 1, random size differences
+  tilt: number; // 0 – 1, random turn away from the surface
+  align: "follow" | "grid"; // 顺着走势: on the surface along the part / 网格: axis-aligned grid (pieces only)
+  colorBy: PieceColor;
+  color2: string; // along / facing: second color (first = the part's Color)
+  bands: number; // along / facing: 1 – 6, the two colors repeat as stripes
+  gradient: number; // piece: 0 (flat color per piece) – 1 (full gradient across each piece)
+  palette: string[]; // piece: 5 colors; each piece starts somewhere different in it
+  blend: number; // fused: 0 (sharp joins) – 1 (very melted)
+  detail: number; // fused: mesh resolution 32 – 96
+  flower: boolean; // fused petals: melt the whole flower (petals + stalks + center ball) into one shape
+  stalk: number; // flower fusion: stalk length from the center to each petal, 0 – 0.3 m
+  stalkWidth: number; // flower fusion: stalk radius at the center, 0.002 – 0.04 m
+}
+
+export type BuildPreset = "abstract" | "blocks" | "cubes";
+
+/** Presets for pieces (the three former separate features). `count` depends on the part's size. */
+export function buildPreset(preset: BuildPreset, part: MaterialPart): Partial<BuildSpec> {
+  switch (preset) {
+    case "abstract": // one squashed primitive per part, two-color top/underside stripes (Blender reference)
+      return { primitive: "sphere", count: 1, scale: 1, width: 0.6, thickness: 0.35, variation: 0, tilt: 0, align: "follow", colorBy: "facing", bands: 2 };
+    case "blocks": // many small equal cubes, one gradient along the part
+      return { primitive: "cube", count: part === "stem" ? 80 : part === "sepals" ? 6 : 14, scale: 0.9, width: 1, thickness: 1, variation: 0, tilt: 0, align: "follow", colorBy: "along", bands: 1 };
+    case "cubes": // few big tilted boxes, each with its own palette gradient
+      return { primitive: "cube", count: part === "stem" ? 14 : 2, scale: 1.15, width: 0.87, thickness: 0.65, variation: 0.6, tilt: 0.3, align: "follow", colorBy: "piece", gradient: 0.8 };
+  }
 }
 
 /**
@@ -227,7 +237,7 @@ export interface PlantSpec {
   architecture: ArchitectureSpec;
   materials: Record<MaterialPart, MaterialSpec>;
   animations: Record<MaterialPart, AnimationSpec>; // same parts as materials
-  cubes: Record<MaterialPart, CubeSpec>; // Form → Build (smooth / cubes) per part
+  builds: Record<MaterialPart, BuildSpec>; // Form → Build (smooth / pieces / fused) per part
   plantAnimation: PlantAnimationSpec;
   scene: SceneSpec;
   effect: EffectSpec;
@@ -279,19 +289,30 @@ function material(halo: number): MaterialSpec {
 }
 
 /** Default build: smooth, with cube settings ready for when the player switches. */
-// Cubes palette is from the user's big-gradient-cube reference: orange → pink → lavender → olive → dark green.
-function cubes(size: number, color2: string, count: number): CubeSpec {
+// Default pieces settings = the Cubes preset; palette from the user's big-gradient-cube reference
+// (orange → pink → lavender → olive → dark green). Petals' color2 is the blue from the Blender reference.
+function build(part: MaterialPart, color2: string): BuildSpec {
   return {
-    build: "smooth",
-    size,
+    mode: "smooth",
+    primitive: "cube",
+    count: 2,
+    scale: 1,
+    width: 1,
+    thickness: 1,
+    variation: 0,
+    tilt: 0,
     align: "follow",
-    gap: 0.1,
+    colorBy: "piece",
     color2,
-    count,
-    variation: 0.6,
-    tilt: 0.3,
+    bands: 1,
     gradient: 0.8,
     palette: ["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"],
+    blend: 0.5,
+    detail: 64,
+    flower: part === "petals",
+    stalk: 0.12,
+    stalkWidth: 0.012,
+    ...buildPreset("cubes", part),
   };
 }
 
@@ -331,20 +352,8 @@ export const DEFAULT_SPEC: PlantSpec = {
     color: "#e98bb0",
     // Starter drawing: a spoon-shaped petal, narrow at the base and wide near the tip.
     drawn: sampleProfile((v) => 0.34 * Math.pow(Math.sin(Math.PI * v), 0.5) * (0.4 + 0.6 * v)),
-    // Abstract defaults follow the user's Blender reference: squashed spheres on a ring, layers stacked.
-    style: "natural",
-    primitive: "sphere",
-    width: 0.6,
-    thickness: 0.35,
+    stack: false,
     layerGap: 0.05,
-    gradient: "facing",
-    bands: 2,
-    color2: "#5468e0",
-    join: "separate",
-    stalk: 0.12,
-    stalkWidth: 0.012,
-    blend: 0.5,
-    detail: 64,
   },
   center: {
     type: "disc",
@@ -381,12 +390,12 @@ export const DEFAULT_SPEC: PlantSpec = {
     sepals: animation(),
   },
   plantAnimation: { glitch: 0, glitchBlock: 0.4, speed: 0.5 },
-  cubes: {
-    stem: cubes(0.012, "#b8e07a", 14),
-    leaves: cubes(0.01, "#d9f2a6", 2),
-    petals: cubes(0.012, "#fff1c9", 2),
-    center: cubes(0.008, "#ff8a3d", 2),
-    sepals: cubes(0.007, "#d9f2a6", 2),
+  builds: {
+    stem: build("stem", "#b8e07a"),
+    leaves: build("leaves", "#d9f2a6"),
+    petals: build("petals", "#5468e0"),
+    center: build("center", "#ff8a3d"),
+    sepals: build("sepals", "#d9f2a6"),
   },
   scene: {
     background: "#1d1f24",

@@ -19,6 +19,7 @@
 // Shadows don't follow the motion (the shadow pass uses three's own depth material).
 import * as THREE from "three";
 import type { AnimationSpec, PlantAnimationSpec } from "../plant/spec";
+import { HASH } from "./glsl";
 
 /** How the part is shaped, which decides how sway bends it. */
 export type AnimKind = "stem" | "blade" | "blob";
@@ -57,7 +58,7 @@ const HEADER = /* glsl */ `
 uniform float uAnTime, uAnSway, uAnPulse, uAnGlitch, uAnBand, uAnSize, uAnPlantTime, uAnStemSway, uAnStemLen, uAnSeed;
 uniform float uAnWTime, uAnWGlitch, uAnWBand, uAnSGlitch, uAnSBand;
 uniform vec2 uAnRes;
-float anHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+${HASH}
 // The stem's sway offset at plant-space height y (same formula as the stem itself, ANIM_KIND 0 in MOVE).
 vec3 anStemSway(float y) {
   float h = clamp(y / uAnStemLen, 0.0, 1.0); h *= h;
@@ -110,8 +111,8 @@ const FOLLOW = /* glsl */ `
     vec4 anC = projectionMatrix * modelViewMatrix * vec4(anchor + anO, 1.0);
     float anSt = floor(uAnPlantTime * 10.0);
     float anB = floor((anC.y / anC.w * 0.5 + 0.5) * uAnRes.y / uAnSBand) + 101.0;
-    if (anHash(vec2(anB, anSt)) < uAnSGlitch * 0.5) {
-      gl_Position.x += (anHash(vec2(anB + 7.0, anSt)) - 0.5) * uAnSGlitch * 0.6 * gl_Position.w;
+    if (hash21(vec2(anB, anSt)) < uAnSGlitch * 0.5) {
+      gl_Position.x += (hash21(vec2(anB + 7.0, anSt)) - 0.5) * uAnSGlitch * 0.6 * gl_Position.w;
     }
   #endif
 }
@@ -125,8 +126,8 @@ function tear(amount: string, band: string, time: string, seed: string) {
   float anSt = floor(${time} * 10.0);
   float anY = (gl_Position.y / gl_Position.w * 0.5 + 0.5) * uAnRes.y;
   float anB = floor(anY / ${band}) + ${seed} * 101.0;
-  if (anHash(vec2(anB, anSt)) < ${amount} * 0.5) {
-    gl_Position.x += (anHash(vec2(anB + 7.0, anSt)) - 0.5) * ${amount} * 0.6 * gl_Position.w;
+  if (hash21(vec2(anB, anSt)) < ${amount} * 0.5) {
+    gl_Position.x += (hash21(vec2(anB + 7.0, anSt)) - 0.5) * ${amount} * 0.6 * gl_Position.w;
   }
 }
 `;

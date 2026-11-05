@@ -88,4 +88,6 @@ body {
 .category summary { cursor: pointer; padding: 8px 0; font-size: 13px; color: #cfd1d6; }
 .category .zh { color: #9a9ca3; }
 .category-body { display: grid; gap: 10px; padding-bottom: 8px; }
+.presets { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.presets .ctl-label { flex: 1 0 100%; }
 .subgroup { display: grid; gap: inherit; border-top: 1px dashed #3a3d44; padding-top: 10px; }

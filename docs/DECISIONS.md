@@ -13,6 +13,18 @@ Template:
 
 ---
 
+## 2026-11-05 — One Build system (pieces / fused) for every part; old features become presets
+
+**Choice:** `spec.builds[part] = { mode: smooth|pieces|fused, primitive, count, scale, width, thickness,
+variation, tilt, align, colorBy, … }`, built by `build.ts` from the part's finished geometry. Abstract petals,
+Blocks and Cubes are presets; fusion reuses the same pieces as ellipsoids. Petal-only abstract fields removed.
+**Why:** They were the same operation (scatter on the surface → copy a primitive to each point) implemented three
+times, and only some worked on some parts. One system gives every combination on every part and one place to fix.
+**Alternatives considered:** keep separate modes with a shared helper (still three UIs and three specs); bending
+fitted pieces like the old abstract petal (skipped for now — pieces are rigid).
+
+---
+
 ## 2026-11-05 — Two box builds: Blocks (one gradient per part) vs Cubes (one gradient per box)
 
 **Choice:** Keep the small-cube build as Blocks 积木; add Cubes 立方体 = few large, varied, tilted boxes, each

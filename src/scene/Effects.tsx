@@ -13,6 +13,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { usePlant } from "../state/store";
+import { HASH, PINGPONG, ramp5 } from "./glsl";
 
 const VERTEX = /* glsl */ `
 varying vec2 vUv;
@@ -51,36 +52,23 @@ const RampShader = {
 uniform sampler2D tDiffuse; uniform vec3 ramp[5];
 uniform float contrast, offset, repeat, aberration, grain, time;
 varying vec2 vUv;
+${HASH}
+${PINGPONG}
+${ramp5("ramp")}
 
 // Brightness (perceptual, 0–1) → position on the ramp.
 float level(vec2 uv) {
   vec3 c = texture2D(tDiffuse, uv).rgb;
   float l = pow(clamp(dot(c, vec3(0.2126, 0.7152, 0.0722)), 0.0, 1.0), 1.0 / 2.2);
   l = clamp((l - 0.5) * contrast + 0.5 + offset, 0.0, 1.0);
-  // Repeat as a ping-pong (0→1→0…) so neighbouring rings blend instead of jumping.
-  float x = l * repeat;
-  float f = fract(x);
-  return mod(floor(x), 2.0) == 0.0 ? f : 1.0 - f;
+  return pingpong(l, repeat); // repeat as 0→1→0… so neighbouring rings blend instead of jumping
 }
-
-vec3 rampColor(float t) {
-  float x = t * 4.0;
-  int i = int(min(floor(x), 3.0));
-  float f = x - float(i);
-  vec3 a = ramp[0], b = ramp[1];
-  if (i == 1) { a = ramp[1]; b = ramp[2]; }
-  if (i == 2) { a = ramp[2]; b = ramp[3]; }
-  if (i == 3) { a = ramp[3]; b = ramp[4]; }
-  return mix(a, b, smoothstep(0.0, 1.0, f));
-}
-
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
 void main() {
   // Colour fringes: red and blue read the image slightly shifted away from the centre.
   vec2 d = (vUv - 0.5) * aberration * 0.025;
   vec3 col = vec3(rampColor(level(vUv + d)).r, rampColor(level(vUv)).g, rampColor(level(vUv - d)).b);
-  col += (hash(vUv * 1000.0 + time) - 0.5) * grain * 0.15;
+  col += (hash21(vUv * 1000.0 + time) - 0.5) * grain * 0.15;
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0); // already sRGB: the ramp colours are given in sRGB
 }`,
 };

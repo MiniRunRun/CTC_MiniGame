@@ -16,6 +16,7 @@
 // and the <project_vertex>/<defaultnormal_vertex> chunks apply it.
 import * as THREE from "three";
 import type { DreamSpec } from "../plant/spec";
+import { HASH, NOISE, PINGPONG, ramp5 } from "./glsl";
 
 const vertexShader = /* glsl */ `
 #include <common>
@@ -50,33 +51,10 @@ varying vec3 vViewPos;
 varying vec3 vObj;
 varying float vAlong;
 
-// Smooth 3D value noise, 0–1.
-float hash3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-float noise3(vec3 p) {
-  vec3 i = floor(p), f = fract(p);
-  f = f * f * (3.0 - 2.0 * f);
-  return mix(
-    mix(mix(hash3(i), hash3(i + vec3(1,0,0)), f.x), mix(hash3(i + vec3(0,1,0)), hash3(i + vec3(1,1,0)), f.x), f.y),
-    mix(mix(hash3(i + vec3(0,0,1)), hash3(i + vec3(1,0,1)), f.x), mix(hash3(i + vec3(0,1,1)), hash3(i + vec3(1,1,1)), f.x), f.y),
-    f.z);
-}
-
-vec3 rampColor(float t) {
-  float x = clamp(t, 0.0, 1.0) * 4.0;
-  int i = int(min(floor(x), 3.0));
-  float f = smoothstep(0.0, 1.0, x - float(i));
-  if (i == 0) return mix(uRamp[0], uRamp[1], f);
-  if (i == 1) return mix(uRamp[1], uRamp[2], f);
-  if (i == 2) return mix(uRamp[2], uRamp[3], f);
-  return mix(uRamp[3], uRamp[4], f);
-}
-
-float pingpong(float t) {
-  float x = t * uRepeat;
-  float f = fract(x);
-  return mod(floor(x), 2.0) == 0.0 ? f : 1.0 - f;
-}
-
+${HASH}
+${NOISE}
+${PINGPONG}
+${ramp5("uRamp")}
 void main() {
   vec3 n = normalize(vNormalV);
   vec3 v = normalize(vViewPos);
@@ -95,9 +73,9 @@ void main() {
   t += uFlow * (noise3(vObj * uScale * 1.7 + vec3(0.0, uTime, uTime * 0.6)) - 0.5);
 
   float d = uFringe * 0.08;
-  vec3 col = vec3(rampColor(pingpong(clamp(t - d, 0.0, 1.0))).r,
-                  rampColor(pingpong(clamp(t, 0.0, 1.0))).g,
-                  rampColor(pingpong(clamp(t + d, 0.0, 1.0))).b);
+  vec3 col = vec3(rampColor(pingpong(clamp(t - d, 0.0, 1.0), uRepeat)).r,
+                  rampColor(pingpong(clamp(t, 0.0, 1.0), uRepeat)).g,
+                  rampColor(pingpong(clamp(t + d, 0.0, 1.0), uRepeat)).b);
   float alpha = uEdge > 0.0 ? smoothstep(0.0, uEdge, facing) : 1.0;
   gl_FragColor = vec4(col, alpha);
   #include <colorspace_fragment>

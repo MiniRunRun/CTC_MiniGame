@@ -13,6 +13,26 @@ Template:
 
 ---
 
+## 2026-11-05 — Restructure phases 1 + 2: shared helpers, one Build system
+
+**Done:**
+- Phase 1 (no visible change): `src/scene/glsl.ts` (hash, noise, ramp, ping-pong) now used by Dream, Glitch,
+  Animation and Effects shaders; `src/plant/ramp.ts` for JS builders; one `RampEditor` for Dream ramp, Effect ramp
+  and piece palettes.
+- Phase 2: abstract petals (abstract.ts), Blocks/Cubes (cubes.ts) and fused petals merged into one
+  `Build 构成 = Smooth / Pieces / Fused` for **every** part (`src/plant/build.ts`, `spec.builds[part]`).
+  Pieces work with any primitive; Fused melts any part's pieces (or the whole flower for petals, old behavior).
+  Abstract / Blocks / Cubes are now Preset buttons. Petal "Style Abstract" removed; its stacked layering is a
+  petal Form option (Layering Natural / Stacked). fused.ts now exposes `melt()` + SDF piece helpers.
+- Tested: petals Abstract preset, leaves Blocks, stem Fused, sepals Pieces, petals Fused whole-flower and
+  each-petal, petals Cubes; Dream material + Glitch material + Dream effect still compile. No new console errors.
+
+**Not finished / known issues:** The old abstract petal bent with Curvature; a single fitted piece doesn't bend.
+Fused with many pieces (e.g. 80 on the stem) rebuilds slowly. Phases 3 (unified color) and 4 (part registry,
+spec regroup) still to do — see docs/WORKFLOW_PLAN.md.
+
+---
+
 ## 2026-11-05 — Code review: restructure proposal (no code change)
 
 **Done:** User asked to research how to optimize the workflow, since e.g. ellipsoid petals and cube builds are the

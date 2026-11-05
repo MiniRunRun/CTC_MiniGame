@@ -14,10 +14,10 @@ import { buildCenter } from "../plant/center";
 import { buildLeafGeometry } from "../plant/leaf";
 import { buildBudGeometry, buildSepalGeometry } from "../plant/sepal";
 import { buildFusedFlower } from "../plant/fused";
-import { cubify, type CubeAxis } from "../plant/cubes";
+import { buildPart, type BuildAxis } from "../plant/build";
 import { buildPartMaterials, type PartMaterials } from "./partMaterial";
 import type { AnimUniforms } from "./animation";
-import type { AnimationSpec, CubeSpec } from "../plant/spec";
+import type { AnimationSpec, BuildSpec } from "../plant/spec";
 
 /** Free GPU memory for geometries/materials we no longer show. */
 function useDisposeOnChange(items: { dispose: () => void }[]) {
@@ -89,51 +89,48 @@ export default function Plant() {
     [layout, spec.petals, spec.center.size, spec.sepals.count],
   );
 
-  // Geometries (one per part type). With Form → Build = Blocks / Cubes, each is rebuilt from boxes (cubes.ts).
-  const cb = spec.cubes;
-  // The smooth source geometry is freed once cubified (except the stem's, which belongs to the layout).
-  const cube = (on: CubeSpec, color: string, axis: CubeAxis, keepSource = false) => (g: THREE.BufferGeometry) => {
-    if (on.build === "smooth") return g;
-    const out = cubify(g, { spec: on, color, axis });
+  // Geometries (one per part type). Form → Build = Pieces / Fused rebuilds each one (plant/build.ts).
+  const bd = spec.builds;
+  // The smooth source geometry is freed once rebuilt (except the stem's, which belongs to the layout).
+  const build = (on: BuildSpec, color: string, axis: BuildAxis, keepSource = false) => (g: THREE.BufferGeometry) => {
+    if (on.mode === "smooth") return g;
+    const out = buildPart(g, { spec: on, color, axis });
     if (!keepSource) g.dispose();
     return out;
   };
+  // Petals fused as a whole flower: one melted shape per flower, drawn on every flower head instead of petals.
+  const flowerFused = bd.petals.mode === "fused" && bd.petals.flower;
   const petal = useMemo(
-    () => cube(cb.petals, spec.petals.color, "x")(buildPetalGeometry(spec.petals)),
-    [spec.petals, cb.petals],
+    () => (flowerFused ? buildPetalGeometry(spec.petals) : build(bd.petals, spec.petals.color, "x")(buildPetalGeometry(spec.petals))),
+    [spec.petals, bd.petals, flowerFused],
   );
   const sepal = useMemo(
-    () => cube(cb.sepals, spec.sepals.color, "x")(buildSepalGeometry(spec.sepals, spec.petals.size)),
-    [spec.sepals, spec.petals.size, cb.sepals],
+    () => build(bd.sepals, spec.sepals.color, "x")(buildSepalGeometry(spec.sepals, spec.petals.size)),
+    [spec.sepals, spec.petals.size, bd.sepals],
   );
-  const leaf = useMemo(() => cube(cb.leaves, spec.leaves.color, "x")(buildLeafGeometry(spec.leaves)), [spec.leaves, cb.leaves]);
+  const leaf = useMemo(() => build(bd.leaves, spec.leaves.color, "x")(buildLeafGeometry(spec.leaves)), [spec.leaves, bd.leaves]);
   const bud = useMemo(
-    () => cube(cb.sepals, spec.petals.color, "y")(buildBudGeometry(spec.sepals, spec.petals)),
-    [spec.sepals, spec.petals, cb.sepals],
+    () => build(bd.sepals, spec.petals.color, "y")(buildBudGeometry(spec.sepals, spec.petals)),
+    [spec.sepals, spec.petals, bd.sepals],
   );
   const receptacle = useMemo(
-    () => cube(cb.stem, spec.stem.color, "y")(new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10)),
-    [spec.stem.thickness, spec.stem.color, cb.stem],
+    () => build(bd.stem, spec.stem.color, "y")(new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10)),
+    [spec.stem.thickness, spec.stem.color, bd.stem],
   );
   const center = useMemo(
-    () => buildCenter(spec.center).map((c) => ({ ...c, geometry: cube(cb.center, c.color, "y")(c.geometry) })),
-    [spec.center, cb.center],
+    () => buildCenter(spec.center).map((c) => ({ ...c, geometry: build(bd.center, c.color, "y")(c.geometry) })),
+    [spec.center, bd.center],
   );
   const stemGeo = useMemo(
-    () => cube(cb.stem, spec.stem.color, "y", true)(layout.stemGeometry),
-    [layout, cb.stem, spec.stem.color],
+    () => build(bd.stem, spec.stem.color, "y", true)(layout.stemGeometry),
+    [layout, bd.stem, spec.stem.color],
   );
-  // Cube parts carry their colors in the geometry (gradient), so materials must use vertex colors.
-  const stemCubes = cb.stem.build !== "smooth";
-  const centerCubes = cb.center.build !== "smooth";
-  // Fused abstract petals: one melted shape per flower, drawn on every flower head instead of single petals.
-  const fusedOn = spec.petals.style === "abstract" && spec.petals.join === "fused";
+  // Rebuilt parts carry their colors in the geometry, so materials must use vertex colors.
+  const stemCubes = bd.stem.mode !== "smooth";
+  const centerCubes = bd.center.mode !== "smooth";
   const fused = useMemo(
-    () =>
-      fusedOn
-        ? cube(cb.petals, spec.petals.color, "radial")(buildFusedFlower(spec.petals, spec.center.size * 0.35, spec.stem.thickness * 1.6))
-        : null,
-    [fusedOn, spec.petals, spec.center.size, spec.stem.thickness, cb.petals],
+    () => (flowerFused ? buildFusedFlower(spec.petals, bd.petals, spec.center.size * 0.35, spec.stem.thickness * 1.6) : null),
+    [flowerFused, spec.petals, bd.petals, spec.center.size, spec.stem.thickness],
   );
 
   // Materials: each part has its own (natural / pearl / dream), see partMaterial.ts.
@@ -157,7 +154,7 @@ export default function Plant() {
   );
   const petalGeo = fused ?? petal;
   // Length for the dream "length" input: petal length, or for fused flowers the reach from the axis to the petal tips.
-  const petalLen = fused ? spec.center.size * 0.35 + spec.petals.stalk + spec.petals.size : spec.petals.size;
+  const petalLen = fused ? spec.center.size * 0.35 + bd.petals.stalk + spec.petals.size : spec.petals.size;
   const stemMat = useMemo(
     () => buildPartMaterials(mats.stem, stemCubes ? { vertexColors: true, roughness: 0.7 } : { color: spec.stem.color, roughness: 0.7 }, { spec: anims.stem, part: "stem", kind: "stem", size: spec.stem.length, plant, follow: false }),
     [mats.stem, spec.stem.color, anims.stem, spec.stem.length, plant, stemCubes],

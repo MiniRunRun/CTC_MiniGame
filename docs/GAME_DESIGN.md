@@ -46,22 +46,23 @@ These were not in the user's list. They were added because the 3D needs them; re
 - Stem: **Bend 弯曲度** (how strong the curve/spiral is), **Lean 倾斜 + Direction 生长方向** (tilt and its compass
   direction; together they are "growth direction"), **Color**.
 - Petals: **Size 大小**, **Color** (fades lighter toward the base). Layers is a 1–4 slider (1 = single, 2+ = multi).
-- Petals: **Style 风格 Natural / Abstract 抽象几何** (user request, from a Blender Geometry Nodes reference).
-  Abstract swaps each petal for a primitive (sphere, gem, cube, cone, torus, capsule) with Width, Thickness,
-  Layer Gap, two colors, Gradient (top↔under / base→tip) and Bands. Shape is hidden in abstract mode.
-- Petals (abstract): **Join 连接 Separate / Fused 融合** — fused melts round petals and stalks into one blobby
-  shape (Stalk Length, Stalk Width, Blend, Detail). From the user's pearl reference image.
+- Petals: **Layering 层次 Natural / Stacked 叠放** (when Layers > 1). Stacked = identical rings moved up/down by
+  Layer Gap, like the user's Blender Geometry Nodes reference.
 - **Every part section (01–05) has four categories** (user request, 2026-11-05):
   **Form 形态** (shape, size, count, color — the original sliders) · **Material 材质** · **Animation 动画** ·
   **Growing State 生长状态** (placeholder, to be designed with the user later).
-- **Form → Build 构造** (every part): Smooth 平滑 / **Blocks 积木** / **Cubes 立方体**.
-  - Blocks: many small cubes that follow the shape, one gradient from the part's Color (base) to Gradient End
-    渐变终点色 (tip). Cube Size, Align 排列 (Follow 顺着走势 / Grid 网格), Gap.
-  - Cubes (user's references: big gradient cubes, scattered pastel boxes, flat overlapping blocks): few big boxes
-    of mixed sizes, loosely following the part, tilted and overlapping; each box has its own full gradient from a
-    5-color Palette 色板 (default orange → pink → lavender → olive → dark green). Count 数量 (boxes along the
-    part), Variation 大小变化, Tilt 倾斜, Gradient 渐变 (0 = one flat color per box).
-  Stem's setting also covers receptacles; Sepals' covers buds.
+- **Form → Build 构成** (every part; Stem's also covers receptacles, Sepals' covers buds):
+  **Smooth 平滑 / Pieces 拼块 / Fused 融合** (restructure phase 2, see docs/WORKFLOW_PLAN.md).
+  - Pieces: the part is rebuilt from primitives (Cube, Sphere, Gem, Cone, Torus, Capsule) placed along its surface.
+    Count 数量 (1 = one piece fitted to the whole part), Size 大小, Variation 大小变化, Tilt 倾斜, Width, Thickness,
+    Align 排列 (Follow 顺着走势 / Grid 网格).
+  - Fused: the same pieces as ellipsoids melted into one smooth shape (Blend 融合度, Detail 精度). Petals can also
+    fuse the **Whole Flower 整朵花** (all petals + a stalk to each + a center ball; Stalk Length / Width).
+  - Color By 颜色: Part 部件色 (the part's own colors) / Along 沿长度 or Facing 朝向 (Color → Color 2, Bands) /
+    Piece 每块色板 (each piece its own gradient from a 5-color Palette, Gradient 0 = flat color per piece).
+  - **Preset 预设** buttons fill in the former separate features: **Abstract 抽象** (1 squashed sphere per part,
+    top/underside stripes — the old abstract petals), **Blocks 积木** (many small cubes, gradient along the
+    part), **Cubes 立方体** (few big tilted boxes with palette gradients, from the user's cube references).
 - **Material 材质** (still images, no motion): each part
   picks its own **Natural 自然 / Pearl 珍珠 / Dream 梦境 / Glitch 故障** with its own settings.
   - Pearl: stylized "painted light" (Highlight, Glow, Body, Shadow colors, Highlight Size, Softness, Rim,

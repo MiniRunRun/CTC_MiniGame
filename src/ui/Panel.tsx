@@ -2,13 +2,14 @@
 // Every section has working controls. Shape groups have a "Drawn 手绘" option that opens a drawing pad.
 import { useMemo, type ReactNode } from "react";
 import { usePlant } from "../state/store";
-import { Choice, ColorPicker, Slider, cm, deg, mm, pct } from "./controls";
+import { Choice, ColorPicker, RampEditor, Slider, cm, deg, mm, pct } from "./controls";
 import DrawPad from "./DrawPad";
 import { petalWidth } from "../plant/petal";
 import { leafWidth } from "../plant/leaf";
 import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
-import type { AnimationSpec, CubeSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
+import { buildPreset } from "../plant/spec";
+import type { AnimationSpec, BuildSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -38,59 +39,119 @@ function Category(props: { en: string; zh: string; open?: boolean; children: Rea
   );
 }
 
+const PRIMITIVES = [
+  { value: "cube" as const, label: "Cube 方块" },
+  { value: "sphere" as const, label: "Sphere 球" },
+  { value: "gem" as const, label: "Gem 多面体" },
+  { value: "cone" as const, label: "Cone 圆锥" },
+  { value: "torus" as const, label: "Torus 圆环" },
+  { value: "capsule" as const, label: "Capsule 胶囊" },
+];
+
 /**
- * Form → Build 构造: smooth surface, Blocks 积木 (small cubes) or Cubes 立方体 (big gradient boxes), plant/cubes.ts.
+ * Form → Build 构成 (plant/build.ts): Smooth, Pieces 拼块 (primitives scattered along the part) or Fused 融合
+ * (the pieces melted into one blob). Abstract / Blocks / Cubes are presets of the same pieces settings.
  */
-function CubeControls({ part }: { part: MaterialPart }) {
-  const c = usePlant((st) => st.spec.cubes[part]);
+function BuildControls({ part }: { part: MaterialPart }) {
+  const b = usePlant((st) => st.spec.builds[part]);
   const update = usePlant((st) => st.update);
-  const set = (patch: Partial<CubeSpec>) => update("cubes", { [part]: { ...usePlant.getState().spec.cubes[part], ...patch } });
+  const set = (patch: Partial<BuildSpec>) => update("builds", { [part]: { ...usePlant.getState().spec.builds[part], ...patch } });
   const also = part === "stem" ? " (also receptacles 花托)" : part === "sepals" ? " (also buds 花蕾)" : "";
+  const flower = part === "petals" && b.mode === "fused" && b.flower;
   return (
     <div className="subgroup">
       <Choice
-        label={`Build 构造${also}`}
-        value={c.build}
-        onChange={(build) => set({ build })}
+        label={`Build 构成${also}`}
+        value={b.mode}
+        onChange={(mode) => set({ mode })}
         options={[
           { value: "smooth", label: "Smooth 平滑" },
-          { value: "blocks", label: "Blocks 积木" },
-          { value: "cubes", label: "Cubes 立方体" },
+          { value: "pieces", label: "Pieces 拼块" },
+          { value: "fused", label: "Fused 融合" },
         ]}
       />
-      {c.build === "blocks" && (
+      {b.mode !== "smooth" && (
         <>
-          <Slider label="Cube Size 立方体大小" value={c.size} min={0.003} max={0.05} step={0.001} format={mm} onChange={(size) => set({ size })} />
-          <Choice
-            label="Align 排列"
-            value={c.align}
-            onChange={(align) => set({ align })}
-            options={[
-              { value: "follow", label: "Follow 顺着走势" },
-              { value: "grid", label: "Grid 网格" },
-            ]}
-          />
-          <Slider label="Gap 间隙" value={c.gap} min={0} max={0.6} step={0.01} format={pct} onChange={(gap) => set({ gap })} />
-          <ColorPicker label="Gradient End 渐变终点色" value={c.color2} onChange={(color2) => set({ color2 })} />
-          <p className="hint">Gradient runs from the part's Color (base) to this color (tip).</p>
-        </>
-      )}
-      {c.build === "cubes" && (
-        <>
-          <Slider label="Count 数量" value={c.count} min={1} max={24} step={1} onChange={(count) => set({ count })} />
-          <Slider label="Variation 大小变化" value={c.variation} min={0} max={1} step={0.01} format={pct} onChange={(variation) => set({ variation })} />
-          <Slider label="Tilt 倾斜" value={c.tilt} min={0} max={1} step={0.01} format={pct} onChange={(tilt) => set({ tilt })} />
-          <Slider label="Gradient 渐变" value={c.gradient} min={0} max={1} step={0.01} format={pct} onChange={(gradient) => set({ gradient })} />
-          <div className="ramp-preview" style={{ background: `linear-gradient(90deg, ${c.palette.join(", ")})` }} />
-          {c.palette.map((col, i) => (
-            <ColorPicker
-              key={i}
-              label={`Palette ${i + 1} 色板`}
-              value={col}
-              onChange={(v) => set({ palette: usePlant.getState().spec.cubes[part].palette.map((x, k) => (k === i ? v : x)) })}
+          <div className="presets">
+            <span className="ctl-label">Preset 预设</span>
+            {(["abstract", "blocks", "cubes"] as const).map((k) => (
+              <button key={k} type="button" className="ghost" onClick={() => set(buildPreset(k, part))}>
+                {{ abstract: "Abstract 抽象", blocks: "Blocks 积木", cubes: "Cubes 立方体" }[k]}
+              </button>
+            ))}
+          </div>
+          {part === "petals" && b.mode === "fused" && (
+            <Choice
+              label="Fuse 融合范围"
+              value={b.flower ? "flower" : "part"}
+              onChange={(v) => set({ flower: v === "flower" })}
+              options={[
+                { value: "part", label: "Each Petal 每片" },
+                { value: "flower", label: "Whole Flower 整朵花" },
+              ]}
             />
-          ))}
-          <p className="hint">Each cube has its own gradient from this palette. Gradient 0 = one flat color per cube.</p>
+          )}
+          {b.mode === "pieces" && <Choice label="Primitive 几何体" value={b.primitive} onChange={(primitive) => set({ primitive })} options={PRIMITIVES} />}
+          {flower ? (
+            <>
+              <p className="hint">Melts every petal, a stalk to each petal and a center ball into one smooth shape.</p>
+              <Slider label="Stalk Length 花梗长度" value={b.stalk} min={0} max={0.3} step={0.005} format={cm} onChange={(stalk) => set({ stalk })} />
+              <Slider label="Stalk Width 花梗粗细" value={b.stalkWidth} min={0.002} max={0.04} step={0.001} format={mm} onChange={(stalkWidth) => set({ stalkWidth })} />
+            </>
+          ) : (
+            <>
+              <Slider label="Count 数量" value={b.count} min={1} max={120} step={1} format={(n) => (n === 1 ? "1 · whole part 整体" : String(n))} onChange={(count) => set({ count })} />
+              <Slider label="Size 大小" value={b.scale} min={0.3} max={1.6} step={0.01} format={pct} onChange={(scale) => set({ scale })} />
+              <Slider label="Variation 大小变化" value={b.variation} min={0} max={1} step={0.01} format={pct} onChange={(variation) => set({ variation })} />
+              <Slider label="Tilt 倾斜" value={b.tilt} min={0} max={1} step={0.01} format={pct} onChange={(tilt) => set({ tilt })} />
+            </>
+          )}
+          <Slider label="Width 宽度" value={b.width} min={0.1} max={2} step={0.01} format={pct} onChange={(width) => set({ width })} />
+          <Slider label="Thickness 厚度" value={b.thickness} min={0.05} max={2} step={0.01} format={pct} onChange={(thickness) => set({ thickness })} />
+          {b.mode === "pieces" && b.count > 1 && (
+            <Choice
+              label="Align 排列"
+              value={b.align}
+              onChange={(align) => set({ align })}
+              options={[
+                { value: "follow", label: "Follow 顺着走势" },
+                { value: "grid", label: "Grid 网格" },
+              ]}
+            />
+          )}
+          {b.mode === "fused" && (
+            <>
+              <Slider label="Blend 融合度" value={b.blend} min={0} max={1} step={0.01} format={pct} onChange={(blend) => set({ blend })} />
+              <Slider label="Detail 精度" value={b.detail} min={32} max={96} step={8} onChange={(detail) => set({ detail })} />
+            </>
+          )}
+          {!flower && (
+            <Choice
+              label="Color By 颜色"
+              value={b.colorBy}
+              onChange={(colorBy) => set({ colorBy })}
+              options={[
+                { value: "part", label: "Part 部件色" },
+                { value: "along", label: "Along 沿长度" },
+                { value: "facing", label: "Facing 朝向" },
+                { value: "piece", label: "Piece 每块色板" },
+              ]}
+            />
+          )}
+          {(flower || b.colorBy === "along" || b.colorBy === "facing") && (
+            <>
+              <ColorPicker label="Color 2 第二颜色" value={b.color2} onChange={(color2) => set({ color2 })} />
+              {!flower && <Slider label="Bands 色带" value={b.bands} min={1} max={6} step={1} onChange={(bands) => set({ bands })} />}
+              <p className="hint">{flower ? "Center and stalks use the petal Color; petals turn to Color 2." : "Blends from the part's Color to Color 2."}</p>
+            </>
+          )}
+          {!flower && b.colorBy === "piece" && (
+            <>
+              <Slider label="Gradient 渐变" value={b.gradient} min={0} max={1} step={0.01} format={pct} onChange={(gradient) => set({ gradient })} />
+              <RampEditor label="Palette 色板" colors={b.palette} onChange={(palette) => set({ palette })} />
+              <p className="hint">Each piece starts at its own point in the palette. Gradient 0 = one flat color per piece.</p>
+            </>
+          )}
         </>
       )}
     </div>
@@ -111,7 +172,7 @@ function PartSection(props: {
     <Section num={props.num} en={props.en} zh={props.zh} open={props.open}>
       <Category en="Form" zh="形态" open>
         {props.form}
-        <CubeControls part={props.part} />
+        <BuildControls part={props.part} />
       </Category>
       <Category en="Material" zh="材质">
         <MaterialControls part={props.part} hasLength={props.hasLength} />
@@ -267,56 +328,8 @@ function PetalControls() {
   const p = usePlant((st) => st.spec.petals);
   const update = usePlant((st) => st.update);
   const set = (patch: Partial<typeof p>) => update("petals", patch);
-  const abstract = p.style === "abstract";
   return (
     <>
-      <Choice
-        label="Style 风格"
-        value={p.style}
-        onChange={(style) => set({ style })}
-        options={[
-          { value: "natural", label: "Natural 自然" },
-          { value: "abstract", label: "Abstract 抽象几何" },
-        ]}
-      />
-      {abstract ? (
-        <>
-          <Choice
-            label="Join 连接"
-            value={p.join}
-            onChange={(join) => set({ join })}
-            options={[
-              { value: "separate", label: "Separate 分开" },
-              { value: "fused", label: "Fused 融合" },
-            ]}
-          />
-          {p.join === "fused" ? (
-            <>
-              <p className="hint">Fused melts rounded petals and stalks into one smooth shape.</p>
-              <Slider label="Stalk Length 花梗长度" value={p.stalk} min={0} max={0.3} step={0.005} format={cm} onChange={(stalk) => set({ stalk })} />
-              <Slider label="Stalk Width 花梗粗细" value={p.stalkWidth} min={0.002} max={0.04} step={0.001} format={mm} onChange={(stalkWidth) => set({ stalkWidth })} />
-              <Slider label="Blend 融合度" value={p.blend} min={0} max={1} step={0.01} format={pct} onChange={(blend) => set({ blend })} />
-              <Slider label="Detail 精度" value={p.detail} min={32} max={96} step={8} onChange={(detail) => set({ detail })} />
-            </>
-          ) : (
-          <Choice
-            label="Primitive 几何体"
-            value={p.primitive}
-            onChange={(primitive) => set({ primitive })}
-            options={[
-              { value: "sphere", label: "Sphere 球" },
-              { value: "gem", label: "Gem 多面体" },
-              { value: "cube", label: "Cube 方块" },
-              { value: "cone", label: "Cone 圆锥" },
-              { value: "torus", label: "Torus 圆环" },
-              { value: "capsule", label: "Capsule 胶囊" },
-            ]}
-          />
-          )}
-          <Slider label="Width 宽度" value={p.width} min={0.1} max={1.5} step={0.01} format={pct} onChange={(width) => set({ width })} />
-          <Slider label="Thickness 厚度" value={p.thickness} min={0.05} max={1.5} step={0.01} format={pct} onChange={(thickness) => set({ thickness })} />
-        </>
-      ) : (
       <Choice
         label="Shape 形状"
         value={p.shape}
@@ -328,34 +341,29 @@ function PetalControls() {
           DRAWN,
         ]}
       />
-      )}
-      {!abstract && p.shape === "drawn" && (
+      {p.shape === "drawn" && (
         <DrawPad width={(v) => petalWidth("drawn", v, p.drawn)} color={p.color} onDraw={(drawn) => set({ drawn })} />
       )}
       <Slider label="Number 数量" value={p.count} min={3} max={24} step={1} onChange={(count) => set({ count })} />
       <Slider label="Layers 层数" value={p.layers} min={1} max={4} step={1} format={(n) => (n === 1 ? "1 · single 单层" : `${n} · multi 多层`)} onChange={(layers) => set({ layers })} />
+      {p.layers > 1 && (
+        <Choice
+          label="Layering 层次"
+          value={p.stack ? "stacked" : "natural"}
+          onChange={(v) => set({ stack: v === "stacked" })}
+          options={[
+            { value: "natural", label: "Natural 自然" },
+            { value: "stacked", label: "Stacked 叠放" },
+          ]}
+        />
+      )}
+      {p.layers > 1 && p.stack && (
+        <Slider label="Layer Gap 层间距" value={p.layerGap} min={-0.15} max={0.15} step={0.005} format={cm} onChange={(layerGap) => set({ layerGap })} />
+      )}
       <Slider label="Size 大小" value={p.size} min={0.05} max={0.4} step={0.005} format={cm} onChange={(size) => set({ size })} />
       <Slider label="Curvature 弯曲程度" value={p.curvature} min={-1} max={1} step={0.01} format={pct} onChange={(curvature) => set({ curvature })} />
       <Slider label="Spread 张开角度" value={p.spread} min={10} max={120} step={1} format={deg} onChange={(spread) => set({ spread })} />
-      {abstract && p.layers > 1 && (
-        <Slider label="Layer Gap 层间距" value={p.layerGap} min={-0.15} max={0.15} step={0.005} format={cm} onChange={(layerGap) => set({ layerGap })} />
-      )}
-      <ColorPicker label={abstract ? "Color 1 颜色一" : "Color 颜色"} value={p.color} onChange={(color) => set({ color })} />
-      {abstract && (
-        <>
-          <ColorPicker label="Color 2 颜色二" value={p.color2} onChange={(color2) => set({ color2 })} />
-          <Choice
-            label="Gradient 渐变"
-            value={p.gradient}
-            onChange={(gradient) => set({ gradient })}
-            options={[
-              { value: "facing", label: "Top ↔ Under 朝向" },
-              { value: "length", label: "Base → Tip 沿长度" },
-            ]}
-          />
-          <Slider label="Bands 色带" value={p.bands} min={1} max={6} step={1} onChange={(bands) => set({ bands })} />
-        </>
-      )}
+      <ColorPicker label="Color 颜色" value={p.color} onChange={(color) => set({ color })} />
     </>
   );
 }
@@ -510,7 +518,6 @@ function DreamControls({ d, set, hasLength, halo }: {
   hasLength: boolean; // part has a base→tip direction (blades); otherwise "Length" isn't offered
   halo: boolean; // part can have a halo shell (not the stem)
 }) {
-  const setRamp = (i: number, color: string) => set({ ramp: d.ramp.map((c, k) => (k === i ? color : c)) });
   const input = !hasLength && d.input === "length" ? "facing" : d.input;
   const ends: Record<typeof d.input, [string, string]> = {
     facing: ["center 中心", "edge 边缘"],
@@ -530,10 +537,7 @@ function DreamControls({ d, set, hasLength, halo }: {
           { value: "noise", label: "Noise 噪声" },
         ]}
       />
-      <div className="ramp-preview" style={{ background: `linear-gradient(90deg, ${d.ramp.join(", ")})` }} />
-      {d.ramp.map((c, i) => (
-        <ColorPicker key={i} label={`Ramp ${names[i]}`} value={c} onChange={(v) => setRamp(i, v)} />
-      ))}
+      <RampEditor label="Ramp" colors={d.ramp} names={names} onChange={(ramp) => set({ ramp })} />
       <Slider label="Repeat 色带重复" value={d.repeat} min={1} max={4} step={0.1} format={(v) => v.toFixed(1)} onChange={(repeat) => set({ repeat })} />
       <Slider label="Fringe 色散" value={d.fringe} min={0} max={1} step={0.01} format={pct} onChange={(fringe) => set({ fringe })} />
       <Slider label="Flow 流动" value={d.flow} min={0} max={1} step={0.01} format={pct} onChange={(flow) => set({ flow })} />
@@ -599,7 +603,6 @@ function EffectControls() {
   const e = usePlant((st) => st.spec.effect);
   const update = usePlant((st) => st.update);
   const set = (patch: Partial<typeof e>) => update("effect", patch);
-  const setRamp = (i: number, color: string) => set({ ramp: e.ramp.map((c, k) => (k === i ? color : c)) });
   const rampNames = ["1 暗部 dark", "2", "3", "4", "5 亮部 bright"];
   return (
     <>
@@ -615,10 +618,7 @@ function EffectControls() {
       {e.mode === "dream" && (
         <>
           <p className="hint">Blurs the picture, then recolors it by brightness with the ramp below.</p>
-          <div className="ramp-preview" style={{ background: `linear-gradient(90deg, ${e.ramp.join(", ")})` }} />
-          {e.ramp.map((c, i) => (
-            <ColorPicker key={i} label={`Ramp ${rampNames[i]}`} value={c} onChange={(v) => setRamp(i, v)} />
-          ))}
+          <RampEditor label="Ramp" colors={e.ramp} names={rampNames} onChange={(ramp) => set({ ramp })} />
           <Slider label="Blur 模糊" value={e.blur} min={0} max={1} step={0.01} format={pct} onChange={(blur) => set({ blur })} />
           <Slider label="Contrast 对比度" value={e.contrast} min={0.5} max={3} step={0.05} format={(v) => v.toFixed(2)} onChange={(contrast) => set({ contrast })} />
           <Slider label="Offset 偏移" value={e.offset} min={-0.5} max={0.5} step={0.01} format={(v) => v.toFixed(2)} onChange={(offset) => set({ offset })} />
