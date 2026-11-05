@@ -94,8 +94,24 @@ export interface ArchitectureSpec {
   flowers: number; // flowers in a spike or cluster, 3 – 30
 }
 
-/** natural = lit like a real object; pearl = stylized "painted light" from a generated matcap (see scene/matcap.ts). */
-export type LookStyle = "natural" | "pearl";
+/** natural = lit like a real object; pearl = stylized "painted light" from a generated matcap (see scene/matcap.ts);
+ *  dream = per-part gradient-map shader with optional halo shell (see scene/dreamMaterial.ts). */
+export type LookStyle = "natural" | "pearl" | "dream";
+
+/** Dream material (梦境材质): each part colors itself from a 5-color ramp — unlike the screen effect (EffectSpec). */
+export interface DreamSpec {
+  target: "petals" | "all"; // only petals, or every part
+  input: "facing" | "length" | "noise"; // what picks the ramp color: center→edge, base→tip, or a noise pattern
+  ramp: string[]; // 5 colors, ramp start → end (for facing: center → edge)
+  repeat: number; // 1 – 4, ramp repeats → contour rings
+  fringe: number; // 0 – 1, rainbow edges (r/g/b read the ramp slightly apart)
+  flow: number; // 0 – 1, noise wobble of the color bands (melted look)
+  speed: number; // 0 – 1, how fast the bands move (0 = still)
+  edge: number; // 0 – 1, edges fade out (makes the part transparent)
+  halo: number; // 0 – 0.6, size of a soft glow shell around each petal (0 = off)
+  haloColor: string;
+  haloOpacity: number; // 0 – 1
+}
 
 export interface LookSpec {
   style: LookStyle;
@@ -110,6 +126,7 @@ export interface LookSpec {
   lightAngle: number; // where the highlight sits, 0 – 360° (90 = top)
   tint: boolean; // multiply by each part's own colors
   background: string;
+  dream: DreamSpec;
 }
 
 /** Screen effect applied after the 3D is drawn (see scene/Effects.tsx). */
@@ -216,6 +233,20 @@ export const DEFAULT_SPEC: PlantSpec = {
     lightAngle: 100,
     tint: false,
     background: "#000000",
+    // Dream material defaults follow the user's blurred reference: lavender-grey center, olive, pink, white edge.
+    dream: {
+      target: "petals",
+      input: "facing",
+      ramp: ["#a9adc2", "#c9bfe6", "#b3a547", "#f0b3bd", "#f6f2f4"],
+      repeat: 1,
+      fringe: 0.4,
+      flow: 0.3,
+      speed: 0.2,
+      edge: 0,
+      halo: 0.25,
+      haloColor: "#f0b3bd",
+      haloOpacity: 0.55,
+    },
   },
   // Dream defaults are picked from the user's reference image: white background, pink halos, olive, lavender-grey shapes.
   effect: {

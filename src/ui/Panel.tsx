@@ -280,6 +280,61 @@ function CenterControls() {
   );
 }
 
+/** Dream material (inside each part). The whole-screen version is 08 Effect → Dream. */
+function DreamControls() {
+  const d = usePlant((st) => st.spec.look.dream);
+  const update = usePlant((st) => st.update);
+  // Read the latest dream settings (not this render's copy) so quick successive changes don't undo each other.
+  const set = (patch: Partial<typeof d>) => update("look", { dream: { ...usePlant.getState().spec.look.dream, ...patch } });
+  const setRamp = (i: number, color: string) => set({ ramp: d.ramp.map((c, k) => (k === i ? color : c)) });
+  const ends: Record<typeof d.input, [string, string]> = {
+    facing: ["center 中心", "edge 边缘"],
+    length: ["base 根部", "tip 尖端"],
+    noise: ["low 低", "high 高"],
+  };
+  const names = [`1 ${ends[d.input][0]}`, "2", "3", "4", `5 ${ends[d.input][1]}`];
+  return (
+    <>
+      <p className="hint">Colors each part from the ramp inside its own surface. For the blurred whole-screen version use 08 Effect.</p>
+      <Choice
+        label="Apply To 应用于"
+        value={d.target}
+        onChange={(target) => set({ target })}
+        options={[
+          { value: "petals", label: "Petals 仅花瓣" },
+          { value: "all", label: "All 全部部件" },
+        ]}
+      />
+      <Choice
+        label="Color By 颜色依据"
+        value={d.input}
+        onChange={(input) => set({ input })}
+        options={[
+          { value: "facing", label: "Facing 朝向" },
+          { value: "length", label: "Length 沿长度" },
+          { value: "noise", label: "Noise 噪声" },
+        ]}
+      />
+      <div className="ramp-preview" style={{ background: `linear-gradient(90deg, ${d.ramp.join(", ")})` }} />
+      {d.ramp.map((c, i) => (
+        <ColorPicker key={i} label={`Ramp ${names[i]}`} value={c} onChange={(v) => setRamp(i, v)} />
+      ))}
+      <Slider label="Repeat 色带重复" value={d.repeat} min={1} max={4} step={0.1} format={(v) => v.toFixed(1)} onChange={(repeat) => set({ repeat })} />
+      <Slider label="Fringe 色散" value={d.fringe} min={0} max={1} step={0.01} format={pct} onChange={(fringe) => set({ fringe })} />
+      <Slider label="Flow 流动" value={d.flow} min={0} max={1} step={0.01} format={pct} onChange={(flow) => set({ flow })} />
+      <Slider label="Speed 速度" value={d.speed} min={0} max={1} step={0.01} format={pct} onChange={(speed) => set({ speed })} />
+      <Slider label="Edge Fade 边缘淡出" value={d.edge} min={0} max={1} step={0.01} format={pct} onChange={(edge) => set({ edge })} />
+      <Slider label="Halo 光晕大小" value={d.halo} min={0} max={0.6} step={0.01} format={pct} onChange={(halo) => set({ halo })} />
+      {d.halo > 0 && (
+        <>
+          <ColorPicker label="Halo Color 光晕颜色" value={d.haloColor} onChange={(haloColor) => set({ haloColor })} />
+          <Slider label="Halo Opacity 光晕强度" value={d.haloOpacity} min={0} max={1} step={0.01} format={pct} onChange={(haloOpacity) => set({ haloOpacity })} />
+        </>
+      )}
+    </>
+  );
+}
+
 function LookControls() {
   const l = usePlant((st) => st.spec.look);
   const update = usePlant((st) => st.update);
@@ -296,8 +351,10 @@ function LookControls() {
         options={[
           { value: "natural", label: "Natural 自然光照" },
           { value: "pearl", label: "Pearl 珍珠风格化" },
+          { value: "dream", label: "Dream 梦境材质" },
         ]}
       />
+      {l.style === "dream" && <DreamControls />}
       {pearl && (
         <>
           <img className="matcap-preview" src={preview} alt="Pearl light preview" />

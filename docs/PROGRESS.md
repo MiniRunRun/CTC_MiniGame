@@ -13,6 +13,29 @@ Template:
 
 ---
 
+## 2026-11-04 — Dream material (梦境材质), the per-part version of Dream
+
+**Done:**
+- User asked whether the Dream look can live inside a single petal, and wanted **both** options.
+  Explained: a material can only color the pixels its part covers, so blur across parts / spill onto the
+  background needs the screen effect; a halo shell fakes the spill.
+- 07 Look → **Dream 梦境材质** (`src/scene/dreamMaterial.ts`, a ShaderMaterial that works with InstancedMesh):
+  Apply To (petals only / all parts), Color By (facing / length / noise), 5 ramp colors, Repeat, Fringe,
+  Flow, Speed (animated), Edge Fade, Halo size / color / opacity. Halo = a second enlarged, see-through copy
+  of each petal (or fused flower) that fades out at its edge.
+- 08 Effect → Dream (screen) is unchanged; both can be combined.
+- Bug fixed: dream sliders changed quickly in a row undid each other (they copied a stale settings object);
+  `set` now reads the latest store state.
+- Tested: natural / abstract / fused petals, all inputs, all parts, edge fade, halo on/off. No console errors
+  (only three.js' own deprecation warnings about Clock and PCFSoftShadowMap, which were there before).
+
+**Not finished / known issues:**
+- Buds, stem and center have no length axis, so "Length" falls back to "Facing" on them.
+- Edge Fade makes parts see-through without sorting; overlapping faded petals can look slightly off.
+- Other panel sections still copy their part's settings per render; only an issue for scripted rapid changes.
+
+**Next:** user feedback; ramp presets shared by both Dream versions.
+
 ## 2026-11-04 — Dream screen effect (梦境)
 
 **Done:**

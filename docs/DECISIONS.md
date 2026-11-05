@@ -13,6 +13,15 @@ Template:
 
 ---
 
+## 2026-11-04 — Two Dream versions: per-part shader and screen effect
+
+**Choice:** Keep the screen effect (08) and add a Dream *material* (07 Look) as a custom ShaderMaterial using
+three's shader chunks (so instancing works). Halo outside the outline = an enlarged transparent shell copy.
+**Why:** user wanted both. A material can't paint outside its own pixels or blur across parts; the screen
+effect can't give each part its own ramp. Together they cover both.
+**Alternatives considered:** `onBeforeCompile` on MeshStandardMaterial (lighting not needed for this look);
+three-custom-shader-material (new dependency for no gain here).
+
 ## 2026-11-04 — Dream effect = blur + gradient map with three.js EffectComposer
 
 **Choice:** A screen pass chain (RenderPass → 6 Gaussian blur passes → one gradient-map shader that writes sRGB

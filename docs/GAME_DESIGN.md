@@ -53,6 +53,8 @@ These were not in the user's list. They were added because the 3D needs them; re
   shape (Stalk Length, Stalk Width, Blend, Detail). From the user's pearl reference image.
 - **07 Look 风格**: Natural / **Pearl 珍珠风格化** stylized "painted light" (Highlight, Glow, Body, Shadow colors,
   Highlight Size, Softness, Rim, Light Angle, Part Colors on/off, Background).
+- 07 Look also has **Dream 梦境材质**: the dream ramp computed inside each part (petals only or all), colored by
+  facing / length / noise, with Repeat, Fringe, Flow, Speed, Edge Fade and a Halo glow shell.
 - **08 Effect 后期效果**: None / **Dream 梦境** — blur + 5-color gradient map (Blur, Contrast, Offset, Repeat,
   Fringe, Grain). From the user's blurred, pink-haloed reference image.
 - A **Reset 重置** button.

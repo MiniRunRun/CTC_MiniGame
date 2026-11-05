@@ -79,6 +79,12 @@ small JSON file, which the garden can reuse later.
 - **Look (`src/scene/matcap.ts`, `Plant.tsx`):** `look.style = "pearl"` swaps every material for
   `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light; shadow → body → glow →
   highlight → white core, glow on the rim). `look.tint` multiplies by part colors. Viewport hides ground/shadows.
+- **Dream material (`src/scene/dreamMaterial.ts`):** `look.style = "dream"`. ShaderMaterial built from three chunks
+  (`beginnormal/defaultnormal/begin/project_vertex`, so InstancedMesh works). t = 1−|n·v| (facing), x/len
+  (length; radial for fused) or 3D value noise; + flow noise moving with time×speed; ping-pong repeat; r/g/b
+  sampled at t±fringe. Edge Fade → alpha (transparent, no depth write). Halo: same geometry/matrices, vertices
+  scaled around the geometry's bbox center by 1+halo, alpha = facing²×opacity, renderOrder 2. `Plant.tsx` updates
+  `uTime` each frame. Target "petals" leaves other parts natural; "all" uses it everywhere.
 - **Screen effects (`src/scene/Effects.tsx`):** when `effect.mode = "dream"`, an EffectComposer renders the scene
   to a texture, blurs it (separable 9-tap Gaussian, 3 horizontal+vertical rounds, radius ∝ screen height ×
   `blur`), then maps perceptual brightness through `contrast`/`offset`/`repeat` onto the 5 `ramp` colors
