@@ -13,6 +13,28 @@ Template:
 
 ---
 
+## 2026-11-04 — Abstract petals (抽象几何)
+
+**Done:**
+- User asked for an "abstract" option that replaces parts with geometric shapes, like their Blender Geometry
+  Nodes video (Curve Circle → Instance on Points of a squashed Ico Sphere → Rotate 57.5° → 3 stacked copies with
+  separate materials). Started with petals, as asked.
+- Petals → **Style 风格: Natural 自然 / Abstract 抽象几何**. Abstract replaces each petal with a primitive:
+  Sphere 球 / Gem 多面体 / Cube 方块 / Cone 圆锥 / Torus 圆环 / Capsule 胶囊, with Width and Thickness sliders.
+  Number, Layers, Size, Curvature and Spread still apply. Layers become identical stacked copies with a
+  **Layer Gap 层间距** (negative = stack downward). Two colors with a **Gradient 渐变** (Top ↔ Under / Base → Tip)
+  and **Bands 色带** (repeat count, for stripes).
+- Code: `src/plant/abstract.ts` (new), `petal.ts` (routes the abstract style), `spec.ts` (new fields),
+  `Panel.tsx`, `styles.css` (6-option grid).
+- Tested in the browser: all 6 primitives, both gradients, bands, gap ±, curvature, switching styles. No console errors.
+
+**Not finished / known issues:**
+- Only petals have the abstract style. Leaves, sepals, buds and the center could get the same option next.
+- The video's per-layer materials (different colors per copy) aren't there yet; every layer uses the same two colors.
+
+**Next:** ask the user whether to extend Abstract to other parts, add per-layer colors, or start the Material section
+(MeshPhysicalMaterial presets + procedural textures; plan given to the user on 2026-11-04).
+
 ## 2026-11-04 — Milestone 4: free drawing
 
 **Done:**

@@ -3,6 +3,7 @@ import * as THREE from "three";
 import type { PetalShape, PetalSpec } from "./spec";
 import { buildBlade, DRAWN_ROWS, ring, type RingPlacement } from "./blade";
 import { profileAt } from "./profile";
+import { buildAbstractPetalGeometry } from "./abstract";
 
 /** Half-width of the petal at v (0 = base, 1 = tip), as a fraction of petal length. */
 export function petalWidth(shape: PetalShape, v: number, drawn: number[]): number {
@@ -20,6 +21,7 @@ export function petalWidth(shape: PetalShape, v: number, drawn: number[]): numbe
 }
 
 export function buildPetalGeometry(spec: PetalSpec): THREE.BufferGeometry {
+  if (spec.style === "abstract") return buildAbstractPetalGeometry(spec);
   const tip = new THREE.Color(spec.color);
   return buildBlade({
     length: spec.size,
@@ -36,10 +38,18 @@ export function buildPetalGeometry(spec: PetalSpec): THREE.BufferGeometry {
 /**
  * Where each petal goes. Layer 0 is the outer, largest ring; inner layers are smaller, more closed and rotated.
  * openness (0–1) closes the flower toward upright; used for younger flowers at the top of a spike.
+ * Abstract style: every layer is an identical copy, moved up (or down) by layerGap, like the stacked
+ * copies in the Blender reference.
  */
 export function petalPlacements(spec: PetalSpec, innerRadius: number, openness = 1): RingPlacement[] {
   const out: RingPlacement[] = [];
   const spread = 10 + (spec.spread - 10) * openness;
+  if (spec.style === "abstract") {
+    for (let layer = 0; layer < spec.layers; layer++) {
+      out.push(...ring(spec.count, spread, innerRadius, { height: spec.layerGap * layer }));
+    }
+    return out;
+  }
   for (let layer = 0; layer < spec.layers; layer++) {
     out.push(
       ...ring(spec.count, Math.max(5, spread - 18 * layer), innerRadius * (1 - 0.15 * layer), {

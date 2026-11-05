@@ -30,6 +30,11 @@ export interface LeafSpec {
 }
 
 export type PetalShape = "round" | "pointed" | "wavy" | "drawn";
+/** natural = thin bendable blade; abstract = each petal replaced by a 3D primitive (see abstract.ts). */
+export type PetalStyle = "natural" | "abstract";
+export type Primitive = "sphere" | "gem" | "cube" | "cone" | "torus" | "capsule";
+/** How the two abstract colors blend: along the petal (base → tip) or by facing (top → underside). */
+export type GradientMode = "length" | "facing";
 
 export interface PetalSpec {
   shape: PetalShape;
@@ -40,6 +45,15 @@ export interface PetalSpec {
   spread: number; // opening angle from the stem axis: 10° closed – 120° drooping
   color: string;
   drawn: number[]; // width profile used when shape = "drawn"
+  // Abstract style (抽象几何). Only used when style = "abstract"; shape is ignored then.
+  style: PetalStyle;
+  primitive: Primitive;
+  width: number; // primitive width as a fraction of petal length, 0.1 – 1.5
+  thickness: number; // primitive thickness as a fraction of petal length, 0.05 – 1.5
+  layerGap: number; // vertical distance between stacked layers (negative stacks downward), -0.15 – 0.15
+  gradient: GradientMode;
+  bands: number; // how many times the gradient repeats, 1 – 6 (more = striped)
+  color2: string; // second gradient color (the first is `color`)
 }
 
 export type CenterType = "disc" | "column" | "stamens";
@@ -112,6 +126,15 @@ export const DEFAULT_SPEC: PlantSpec = {
     color: "#e98bb0",
     // Starter drawing: a spoon-shaped petal, narrow at the base and wide near the tip.
     drawn: sampleProfile((v) => 0.34 * Math.pow(Math.sin(Math.PI * v), 0.5) * (0.4 + 0.6 * v)),
+    // Abstract defaults follow the user's Blender reference: squashed spheres on a ring, layers stacked.
+    style: "natural",
+    primitive: "sphere",
+    width: 0.6,
+    thickness: 0.35,
+    layerGap: 0.05,
+    gradient: "facing",
+    bands: 2,
+    color2: "#5468e0",
   },
   center: {
     type: "disc",

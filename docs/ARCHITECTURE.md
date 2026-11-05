@@ -66,6 +66,11 @@ small JSON file, which the garden can reuse later.
   - *curvature* bends it along its length,
   - *cupping* bends it across its width,
   - *spread* rotates it open from the center.
+- **Abstract petals (`src/plant/abstract.ts`):** when `petals.style = "abstract"`, the petal geometry is a three.js
+  primitive fit into a box (length = size along +X from the origin, width/thickness as fractions of size), bent by
+  curvature, normals recomputed (flat for gem/cube, welded smooth for the rest), and vertex-colored between
+  `color` and `color2` by facing (normal.y) or by length, optionally repeated as bands. `petalPlacements` stacks
+  abstract layers as identical rings offset by `layerGap`.
 - **Drawn shapes (`src/plant/profile.ts`, `src/ui/DrawPad.tsx`):** each shape group has a "Drawn 手绘" option.
   Picking it opens a 240×150 pad showing the current drawn silhouette (a starter shape until the player draws).
   Base = bottom of the drawing, tip = top; its height = the part's length. `strokesToProfile(strokes, axisX)`

@@ -13,6 +13,16 @@ Template:
 
 ---
 
+## 2026-11-04 — Abstract petals reuse the petal ring; only the single-petal geometry changes
+
+**Choice:** "Abstract" is a petal *style*. `buildPetalGeometry` returns a normalized primitive (fit into a
+length × width × thickness box, grown along +X like a blade) instead of a blade; placement still comes from
+`petalPlacements`, so instancing, spikes, clusters etc. work unchanged. Abstract layers are identical copies
+offset by `layerGap` (like the Blender reference) instead of shrinking inner rings. Colors are vertex colors.
+**Why:** one InstancedMesh per part stays, so it costs nothing extra; all existing sliders keep working.
+**Alternatives considered:** a separate "abstract flower" generator (duplicates layout logic); a shader-based
+gradient (not needed yet; vertex colors are enough for these smooth primitives).
+
 ## 2026-11-04 — Drawings become symmetric width profiles; pad shown only when "Drawn" is picked
 
 **Choice:** A drawing is reduced to a half-width per row, mirrored around the pad's center line. Each shape

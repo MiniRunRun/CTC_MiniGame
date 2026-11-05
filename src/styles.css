@@ -52,6 +52,7 @@ body {
 .choice button { flex: 1 1 0; }
 .choice[data-n="4"] button { flex: 1 1 40%; } /* 4 options → 2×2 grid */
 .choice[data-n="5"] button { flex: 1 1 30%; } /* 5 options → 3 + 2 */
+.choice[data-n="6"] button { flex: 1 1 30%; } /* 6 options → 3 × 2 */
 
 .drawpad { display: grid; gap: 4px; }
 .drawpad canvas {

@@ -46,6 +46,9 @@ These were not in the user's list. They were added because the 3D needs them; re
 - Stem: **Bend 弯曲度** (how strong the curve/spiral is), **Lean 倾斜 + Direction 生长方向** (tilt and its compass
   direction; together they are "growth direction"), **Color**.
 - Petals: **Size 大小**, **Color** (fades lighter toward the base). Layers is a 1–4 slider (1 = single, 2+ = multi).
+- Petals: **Style 风格 Natural / Abstract 抽象几何** (user request, from a Blender Geometry Nodes reference).
+  Abstract swaps each petal for a primitive (sphere, gem, cube, cone, torus, capsule) with Width, Thickness,
+  Layer Gap, two colors, Gradient (top↔under / base→tip) and Bands. Shape is hidden in abstract mode.
 - A **Reset 重置** button.
 - Milestone 3: **Color** for leaves and sepals/buds; **Flowers 花朵数量** (3–30) for Spike and Cluster.
   Stem **Branching 分枝数量** (1–6) only has an effect in the Branched architecture.

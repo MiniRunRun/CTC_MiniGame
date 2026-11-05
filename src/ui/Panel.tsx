@@ -162,8 +162,37 @@ function PetalControls() {
   const p = usePlant((st) => st.spec.petals);
   const update = usePlant((st) => st.update);
   const set = (patch: Partial<typeof p>) => update("petals", patch);
+  const abstract = p.style === "abstract";
   return (
     <>
+      <Choice
+        label="Style 风格"
+        value={p.style}
+        onChange={(style) => set({ style })}
+        options={[
+          { value: "natural", label: "Natural 自然" },
+          { value: "abstract", label: "Abstract 抽象几何" },
+        ]}
+      />
+      {abstract ? (
+        <>
+          <Choice
+            label="Primitive 几何体"
+            value={p.primitive}
+            onChange={(primitive) => set({ primitive })}
+            options={[
+              { value: "sphere", label: "Sphere 球" },
+              { value: "gem", label: "Gem 多面体" },
+              { value: "cube", label: "Cube 方块" },
+              { value: "cone", label: "Cone 圆锥" },
+              { value: "torus", label: "Torus 圆环" },
+              { value: "capsule", label: "Capsule 胶囊" },
+            ]}
+          />
+          <Slider label="Width 宽度" value={p.width} min={0.1} max={1.5} step={0.01} format={pct} onChange={(width) => set({ width })} />
+          <Slider label="Thickness 厚度" value={p.thickness} min={0.05} max={1.5} step={0.01} format={pct} onChange={(thickness) => set({ thickness })} />
+        </>
+      ) : (
       <Choice
         label="Shape 形状"
         value={p.shape}
@@ -175,7 +204,8 @@ function PetalControls() {
           DRAWN,
         ]}
       />
-      {p.shape === "drawn" && (
+      )}
+      {!abstract && p.shape === "drawn" && (
         <DrawPad width={(v) => petalWidth("drawn", v, p.drawn)} color={p.color} onDraw={(drawn) => set({ drawn })} />
       )}
       <Slider label="Number 数量" value={p.count} min={3} max={24} step={1} onChange={(count) => set({ count })} />
@@ -183,7 +213,25 @@ function PetalControls() {
       <Slider label="Size 大小" value={p.size} min={0.05} max={0.4} step={0.005} format={cm} onChange={(size) => set({ size })} />
       <Slider label="Curvature 弯曲程度" value={p.curvature} min={-1} max={1} step={0.01} format={pct} onChange={(curvature) => set({ curvature })} />
       <Slider label="Spread 张开角度" value={p.spread} min={10} max={120} step={1} format={deg} onChange={(spread) => set({ spread })} />
-      <ColorPicker label="Color 颜色" value={p.color} onChange={(color) => set({ color })} />
+      {abstract && p.layers > 1 && (
+        <Slider label="Layer Gap 层间距" value={p.layerGap} min={-0.15} max={0.15} step={0.005} format={cm} onChange={(layerGap) => set({ layerGap })} />
+      )}
+      <ColorPicker label={abstract ? "Color 1 颜色一" : "Color 颜色"} value={p.color} onChange={(color) => set({ color })} />
+      {abstract && (
+        <>
+          <ColorPicker label="Color 2 颜色二" value={p.color2} onChange={(color2) => set({ color2 })} />
+          <Choice
+            label="Gradient 渐变"
+            value={p.gradient}
+            onChange={(gradient) => set({ gradient })}
+            options={[
+              { value: "facing", label: "Top ↔ Under 朝向" },
+              { value: "length", label: "Base → Tip 沿长度" },
+            ]}
+          />
+          <Slider label="Bands 色带" value={p.bands} min={1} max={6} step={1} onChange={(bands) => set({ bands })} />
+        </>
+      )}
     </>
   );
 }
