@@ -56,6 +56,16 @@ small JSON file, which the garden can reuse later.
 
 ## How each part becomes 3D
 
+- **Spec shape:** `PlantSpec = { parts, architecture, plantAnimation, scene, effect }`; `parts[part]` (stem, leaves,
+  petals, center, sepals) = `{ shape, build, color, material, animation }` (`PartSpec`). The store edits a part
+  with `setPart(part, layer, patch)`. `shapesOf(spec)` gives layout/assemble just the shapes + architecture.
+- **Part registry (`src/scene/parts.ts`):** `PART_MESHES` = one entry per drawn mesh: `part` (whose settings),
+  `axis`, `roughness`, `doubleSide`, `halo`, `follow`, `onStem`, `inputs()` (memo deps of the source geometry),
+  `source()` (smooth geometries + Form colors; `built` = skip Build, `borrowed` = don't dispose) and `place()`
+  (assemble list or null, anim kind, size). Plant.tsx renders `<PartMesh>` per entry: source → `buildPart` (if not
+  smooth) → `ensureAlong` → `buildPartMaterials` per geometry (vertex colors when the geometry has `color`) →
+  `<Part>` instances (or a plain mesh for the stem), with its own useFrame for animation clocks.
+
 - **Stem:** a 3D curve (`CatmullRomCurve3`) made from the shape: straight line, bent arc, or helix (spiral).
   Direction tilts it. `TubeGeometry` wraps it with the thickness, tapering toward the tip. Branches are child curves
   that start at points along the parent.
@@ -66,7 +76,7 @@ small JSON file, which the garden can reuse later.
   - *curvature* bends it along its length,
   - *cupping* bends it across its width,
   - *spread* rotates it open from the center.
-- **Build (`spec.builds[part]`, `src/plant/build.ts`):** `buildPart(geometry, {spec, color, axis})` for
+- **Build (`spec.parts[part].build`, `src/plant/build.ts`):** `buildPart(geometry, {spec, color, axis})` for
   mode pieces / fused. Steps: area-sampled surface points → slots (grid cells of part length ÷ count; count 1 =
   one slot, area-weighted) → one piece per slot (average point + normal → basis with X along the part's axis
   [x blades, y stem/bud/center/receptacle], or grid cell center; size = slot·scale·(1, thickness, width) ×
@@ -76,7 +86,7 @@ small JSON file, which the garden can reuse later.
   it writes data, not ramp colors: `color` = the part's own color there (average source vertex color per piece),
   `aAlong` (0 base → 1 tip, by the part's axis), `aPiece` = (piece's random start, local·dir·1.6 across it).
   `fine` (Color by Piece) → 8×8×8-segment cubes. Presets: `buildPreset()` in spec.ts → { build, color }.
-  `Plant.tsx` wraps every geometry memo with it and frees the smooth source (not the stem's, owned by the layout);
+  `<PartMesh>` runs it on every geometry and frees the smooth source (not the stem's, owned by the layout);
   rebuilt stem/center switch their materials to vertex colors.
 - **Fused (`src/plant/fused.ts`):** SDF pieces (`ballPiece`, `ellipsoidPiece`, `stalkPiece`) smooth-min blended on
   a detail³ grid by `melt()`, each piece only over its bounding box; three.js `MarchingCubes` (field = −distance,
@@ -86,14 +96,14 @@ small JSON file, which the garden can reuse later.
 - **Shared helpers:** `src/plant/ramp.ts` (`pingpong`, `sampleRamp`, `wrap01`) for builders; `src/scene/glsl.ts`
   (`HASH`, `NOISE`, `PINGPONG`, `ramp5(name)`) pasted into every shader (dream, glitch, animation, Effects);
   `RampEditor` in `src/ui/controls.tsx` for every color ramp/palette in the panel.
-- **Materials per part (`spec.materials`, `src/scene/partMaterial.ts`):** `materials.stem | leaves | petals |
-  center | sepals` each hold `{ type, pearl, dream }`. They're kept outside the part specs so a material change
+- **Materials per part (`spec.parts[part].material`, `src/scene/partMaterial.ts`):** each part holds
+  `{ type, pearl, dream, glitch }`, a separate layer from the shape, so a material change
   never rebuilds geometry. `buildPartMaterials(spec, info)` returns `{ material, halo, disposables }`; the stem's
   material also covers receptacles, the sepals' covers buds. `Plant.tsx` draws each part with `<Part>` (instances +
   optional halo instances). `spec.scene` holds background color and ground on/off.
 - **Pearl (`src/scene/matcap.ts`):** `MeshMatcapMaterial` with a canvas-painted matcap (per pixel: d = normal·light;
   shadow → body → glow → highlight → white core, glow on the rim). `pearl.tint` multiplies by part colors.
-- **Part color (`spec.colors[part]`, `src/scene/partColor.ts`):** `{ by, ramp (2–5), repeat, spread }`. Geometry
+- **Part color (`spec.parts[part].color`, `src/scene/partColor.ts`):** `{ by, ramp (2–5), repeat, spread }`. Geometry
   carries `aAlong` (blade.ts writes v; build.ts / fused.ts write theirs; `ensureAlong(g, axis)` in build.ts fills
   the rest — Plant.tsx calls it on every geometry) and `aPiece`. `glsl.ts PART_COLOR` = uniforms uPcRamp[5], uPcN,
   uPcBy, uPcRepeat, uPcSpread, uPcScale + `partRaw(along, piece, objN, objP, facing)` + `partColor(raw)`
@@ -111,7 +121,7 @@ small JSON file, which the garden can reuse later.
   `(6+block·90)·dpr` px; vertical stripes on the top level and on random bands; accent color on level edges
   (fract(l·levels) near 0/1) in random bands and in random blocks. Random choices use step = floor(uTime·10), so
   with pattern motion they re-roll; with uTime 0 it's a still image. Tearing moved to Animation.
-- **Animation per part (`spec.animations`, `src/scene/animation.ts`):** `{ type: none|sway|pulse|glitch|pattern,
+- **Animation per part (`spec.parts[part].animation`, `src/scene/animation.ts`):** `{ type: none|sway|pulse|glitch|pattern,
   amount, glitchBlock, speed }` per part (same keys as materials) — one motion per part. Whole-plant glitch is
   `spec.plantAnimation { glitch, glitchBlock, speed }`, passed to every part as `PlantMotion.whole`; its tearing
   uses shared bands (seed 0), while a part's own glitch is seeded per part (uAnSeed) so only that part tears.

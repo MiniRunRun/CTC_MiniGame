@@ -1,23 +1,20 @@
 // The 3D plant: reads the flower settings from the store and turns them into meshes.
 //   layoutPlant()  → where flowers, buds and leaves go (+ the stem tubes)
 //   assemble()     → one transform per copy of each part
-//   <Instances>    → draws all copies of a part in one InstancedMesh (one draw call)
-// Each geometry is rebuilt only when its own settings change.
+//   PART_MESHES    → the registry (parts.ts): every mesh runs the same pipeline in <PartMesh>
+//   <Instances>    → draws all copies of a mesh in one InstancedMesh (one draw call)
+// Each geometry is rebuilt only when its own settings change; materials only when theirs do.
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { usePlant } from "../state/store";
-import { layoutPlant } from "../plant/layout";
-import { assemble } from "../plant/assemble";
-import { buildPetalGeometry } from "../plant/petal";
-import { buildCenter } from "../plant/center";
-import { buildLeafGeometry } from "../plant/leaf";
-import { buildBudGeometry, buildSepalGeometry } from "../plant/sepal";
-import { buildFusedFlower } from "../plant/fused";
-import { buildPart, ensureAlong, type BuildAxis } from "../plant/build";
+import { layoutPlant, type PlantLayout } from "../plant/layout";
+import { assemble, type Assembly } from "../plant/assemble";
+import { buildPart, ensureAlong } from "../plant/build";
+import { shapesOf, type AnimationSpec, type PlantSpec } from "../plant/spec";
 import { buildPartMaterials, type PartMaterials } from "./partMaterial";
-import type { AnimUniforms } from "./animation";
-import type { AnimationSpec, BuildSpec } from "../plant/spec";
+import type { AnimUniforms, PlantMotion } from "./animation";
+import { PART_MESHES, type PartMeshDef } from "./parts";
 
 /** Free GPU memory for geometries/materials we no longer show. */
 function useDisposeOnChange(items: { dispose: () => void }[]) {
@@ -76,181 +73,112 @@ function Part({ geometry, mats, matrices, anchors }: {
 
 const bufferSize = new THREE.Vector2();
 
-export default function Plant() {
-  const spec = usePlant((s) => s.spec);
-
-  const layout = useMemo(
-    () => layoutPlant(spec),
-    // Only the settings that move things around; petal colors, center looks etc. don't change the layout.
-    [spec.stem, spec.leaves, spec.architecture, spec.sepals.budCount, spec.petals.size],
-  );
-  const parts = useMemo(
-    () => assemble(spec, layout),
-    [layout, spec.petals, spec.center.size, spec.sepals.count],
-  );
-
-  // Geometries (one per part type). Form → Build = Pieces / Fused rebuilds each one (plant/build.ts).
-  const bd = spec.builds;
-  // The smooth source geometry is freed once rebuilt (except the stem's, which belongs to the layout).
-  // Every geometry also gets "aAlong" (base → tip) for Material → Color (ensureAlong).
-  const cl = spec.colors;
+/** One registry entry: source geometry → build → materials → instances. */
+function PartMesh({ def, spec, layout, assembly, plant }: {
+  def: PartMeshDef;
+  spec: PlantSpec;
+  layout: PlantLayout;
+  assembly: Assembly;
+  plant: PlantMotion;
+}) {
+  const ps = spec.parts[def.part];
   // Cubes need finer faces only when each piece shows its own gradient (Color by Piece).
-  const fine = {
-    stem: cl.stem.by === "piece",
-    leaves: cl.leaves.by === "piece",
-    petals: cl.petals.by === "piece",
-    center: cl.center.by === "piece",
-    sepals: cl.sepals.by === "piece",
-  };
-  const build = (on: BuildSpec, color: string, axis: BuildAxis, fineFaces: boolean, keepSource = false) => (g: THREE.BufferGeometry) => {
-    const out = on.mode === "smooth" ? g : buildPart(g, { spec: on, color, axis, fine: fineFaces });
-    if (out !== g && !keepSource) g.dispose();
-    return ensureAlong(out, axis);
-  };
-  // Petals fused as a whole flower: one melted shape per flower, drawn on every flower head instead of petals.
-  const flowerFused = bd.petals.mode === "fused" && bd.petals.flower;
-  const petal = useMemo(
-    () => (flowerFused ? ensureAlong(buildPetalGeometry(spec.petals), "x") : build(bd.petals, spec.petals.color, "x", fine.petals)(buildPetalGeometry(spec.petals))),
-    [spec.petals, bd.petals, flowerFused, fine.petals],
-  );
-  const sepal = useMemo(
-    () => build(bd.sepals, spec.sepals.color, "x", fine.sepals)(buildSepalGeometry(spec.sepals, spec.petals.size)),
-    [spec.sepals, spec.petals.size, bd.sepals, fine.sepals],
-  );
-  const leaf = useMemo(() => build(bd.leaves, spec.leaves.color, "x", fine.leaves)(buildLeafGeometry(spec.leaves)), [spec.leaves, bd.leaves, fine.leaves]);
-  const bud = useMemo(
-    () => build(bd.sepals, spec.petals.color, "y", fine.sepals)(buildBudGeometry(spec.sepals, spec.petals)),
-    [spec.sepals, spec.petals, bd.sepals, fine.sepals],
-  );
-  const receptacle = useMemo(
-    () => build(bd.stem, spec.stem.color, "y", fine.stem)(new THREE.SphereGeometry(spec.stem.thickness * 0.9, 16, 10)),
-    [spec.stem.thickness, spec.stem.color, bd.stem, fine.stem],
-  );
-  const center = useMemo(
-    () => buildCenter(spec.center).map((c) => ({ ...c, geometry: build(bd.center, c.color, "y", fine.center)(c.geometry) })),
-    [spec.center, bd.center, fine.center],
-  );
-  const stemGeo = useMemo(
-    () => build(bd.stem, spec.stem.color, "y", fine.stem, true)(layout.stemGeometry),
-    [layout, bd.stem, spec.stem.color, fine.stem],
-  );
-  // Rebuilt parts carry their colors in the geometry, so materials must use vertex colors.
-  const stemCubes = bd.stem.mode !== "smooth";
-  const centerCubes = bd.center.mode !== "smooth";
-  const fused = useMemo(
-    () => (flowerFused ? buildFusedFlower(spec.petals, bd.petals, spec.center.size * 0.35, spec.stem.thickness * 1.6) : null),
-    [flowerFused, spec.petals, bd.petals, spec.center.size, spec.stem.thickness],
-  );
+  const fine = ps.color.by === "piece";
 
-  // Materials: each part has its own (natural / pearl / dream), see partMaterial.ts.
-  // Rebuilt only when that part's material settings (or the few inputs it uses) change.
-  const mats = spec.materials;
-  const anims = spec.animations;
-  // The stem's sway, which every other part follows so it stays attached (see animation.ts).
-  // Plus the whole-plant glitch (spec.plantAnimation), shared by every part.
-  const stemSway = anims.stem.type === "sway" ? anims.stem.amount : 0;
-  const stemGlitch = anims.stem.type === "glitch" ? anims.stem.amount : 0;
-  const plant = useMemo(
-    () => ({
-      stemSway,
-      stemGlitch,
-      stemGlitchBlock: anims.stem.glitchBlock,
-      stemSpeed: anims.stem.speed,
-      stemLength: spec.stem.length,
-      whole: spec.plantAnimation,
-    }),
-    [stemSway, stemGlitch, anims.stem.glitchBlock, anims.stem.speed, spec.stem.length, spec.plantAnimation],
-  );
-  const petalGeo = fused ?? petal;
-  // Petal length, or for fused flowers the reach from the axis to the petal tips (noise scale, animation).
-  const petalLen = fused ? spec.center.size * 0.35 + bd.petals.stalk + spec.petals.size : spec.petals.size;
-  const stemMat = useMemo(
-    () => buildPartMaterials(mats.stem, stemCubes ? { vertexColors: true, roughness: 0.7, paint: cl.stem, size: spec.stem.length } : { color: spec.stem.color, roughness: 0.7, paint: cl.stem, size: spec.stem.length }, { spec: anims.stem, part: "stem", kind: "stem", size: spec.stem.length, plant, follow: false }),
-    [mats.stem, spec.stem.color, anims.stem, spec.stem.length, plant, stemCubes, cl.stem],
-  );
-  const receptacleMat = useMemo(
-    () => buildPartMaterials(mats.stem, stemCubes ? { vertexColors: true, roughness: 0.7, haloGeometry: receptacle, paint: cl.stem, size: spec.stem.thickness } : { color: spec.stem.color, roughness: 0.7, haloGeometry: receptacle, paint: cl.stem, size: spec.stem.thickness }, // receptacles sit on the stem: they follow its sway/glitch instead of doing it on their own
-      { spec: stemSway + stemGlitch > 0 ? { ...anims.stem, type: "none" } : anims.stem, part: "stem", kind: "blob", size: spec.stem.thickness, plant, follow: true }),
-    [mats.stem, spec.stem.color, receptacle, anims.stem, spec.stem.thickness, plant, stemCubes, cl.stem],
-  );
-  const leafMat = useMemo(
-    () => buildPartMaterials(mats.leaves, { vertexColors: true, doubleSide: true, roughness: 0.55, paint: cl.leaves, size: spec.leaves.size, haloGeometry: leaf }, { spec: anims.leaves, part: "leaves", follow: true, kind: "blade", size: spec.leaves.size, plant }),
-    [mats.leaves, spec.leaves.size, leaf, anims.leaves, plant, cl.leaves],
-  );
-  const petalMat = useMemo(
-    () => buildPartMaterials(mats.petals, { vertexColors: true, doubleSide: true, roughness: 0.55, paint: cl.petals, size: petalLen, haloGeometry: petalGeo }, { spec: anims.petals, part: "petals", follow: true, kind: fused ? "blob" : "blade", size: petalLen, plant }),
-    [mats.petals, petalLen, fused, petalGeo, anims.petals, plant, cl.petals],
-  );
-  const sepalMat = useMemo(
-    () => buildPartMaterials(mats.sepals, { vertexColors: true, doubleSide: true, roughness: 0.55, paint: cl.sepals, size: spec.petals.size * 0.45, haloGeometry: sepal }, { spec: anims.sepals, part: "sepals", follow: true, kind: "blade", size: spec.petals.size * 0.45, plant }),
-    [mats.sepals, spec.petals.size, sepal, anims.sepals, plant, cl.sepals],
-  );
-  const budMat = useMemo(
-    () => buildPartMaterials(mats.sepals, { vertexColors: true, roughness: 0.6, haloGeometry: bud, paint: cl.sepals, size: spec.petals.size * 0.6 }, { spec: anims.sepals, part: "sepals", follow: true, kind: "blob", size: spec.petals.size * 0.6, plant }),
-    [mats.sepals, bud, anims.sepals, spec.petals.size, plant, cl.sepals],
-  );
-  const centerMats = useMemo(
-    () => center.map((c) => buildPartMaterials(mats.center, centerCubes
-          ? { vertexColors: true, roughness: 0.8, haloGeometry: c.geometry, paint: cl.center, size: spec.center.size }
-          : { color: c.color, roughness: 0.8, haloGeometry: c.geometry, paint: cl.center, size: spec.center.size }, { spec: anims.center, part: "center", follow: true, kind: "blob", size: Math.max(spec.center.size, spec.center.height), plant })),
-    [center, mats.center, anims.center, spec.center.size, spec.center.height, plant, centerCubes, cl.center],
-  );
-  const allMats = [stemMat, receptacleMat, leafMat, petalMat, sepalMat, budMat, ...centerMats];
+  // Geometries. Form → Build = Pieces / Fused rebuilds each one (plant/build.ts); every geometry also gets
+  // "aAlong" (base → tip) for Material → Color. `own` = ours to free later.
+  const geos = useMemo(() => {
+    const src = def.source(spec, layout);
+    return src.pieces.map(({ geometry, color }) => {
+      if (src.built || ps.build.mode === "smooth") return { geometry: ensureAlong(geometry, def.axis), color, own: !src.borrowed };
+      const out = buildPart(geometry, { spec: ps.build, color, axis: def.axis, fine });
+      if (!src.borrowed) geometry.dispose();
+      return { geometry: ensureAlong(out, def.axis), color, own: true };
+    });
+  }, [...def.inputs(spec, layout), ps.build, fine]);
+  useDisposeOnChange(useMemo(() => geos.filter((g) => g.own).map((g) => g.geometry), [geos]));
 
-  useDisposeOnChange(useMemo(() => [layout.stemGeometry], [layout]));
-  useDisposeOnChange(useMemo(() => (stemGeo !== layout.stemGeometry ? [stemGeo] : []), [stemGeo, layout]));
-  useDisposeOnChange(useMemo(() => [petal], [petal]));
-  useDisposeOnChange(useMemo(() => [sepal], [sepal]));
-  useDisposeOnChange(useMemo(() => [leaf], [leaf]));
-  useDisposeOnChange(useMemo(() => [bud], [bud]));
-  useDisposeOnChange(useMemo(() => [receptacle], [receptacle]));
-  useDisposeOnChange(useMemo(() => center.map((c) => c.geometry), [center]));
-  useDisposeOnChange(useMemo(() => (fused ? [fused] : []), [fused]));
-  useDisposeOnChange(stemMat.disposables);
-  useDisposeOnChange(receptacleMat.disposables);
-  useDisposeOnChange(leafMat.disposables);
-  useDisposeOnChange(petalMat.disposables);
-  useDisposeOnChange(sepalMat.disposables);
-  useDisposeOnChange(budMat.disposables);
-  useDisposeOnChange(useMemo(() => centerMats.flatMap((m) => m.disposables), [centerMats]));
+  // Materials (natural / pearl / dream / glitch + Color + Animation), see partMaterial.ts.
+  const { list, kind, size, animSize } = def.place(spec);
+  const a = ps.animation;
+  // A mesh sitting on the stem already moves with it; don't sway/glitch it a second time.
+  const anim = useMemo(() => (def.onStem && (a.type === "sway" || a.type === "glitch") ? { ...a, type: "none" as const } : a), [def.onStem, a]);
+  const mats = useMemo(
+    () =>
+      geos.map(({ geometry, color }) => {
+        // Pieces, blades and buds carry their colors in the geometry; the rest use one color.
+        const vertexColors = geometry.hasAttribute("color");
+        return buildPartMaterials(
+          ps.material,
+          { vertexColors, color: vertexColors ? undefined : color, doubleSide: def.doubleSide, roughness: def.roughness, paint: ps.color, size, haloGeometry: def.halo ? geometry : undefined },
+          { spec: anim, part: def.part, kind, size: animSize ?? size, plant, follow: def.follow },
+        );
+      }),
+    [geos, ps.material, ps.color, anim, kind, size, animSize, plant, def],
+  );
+  useDisposeOnChange(useMemo(() => mats.flatMap((m) => m.disposables), [mats]));
 
-  // Animation clocks, per part (see animation.ts): motion time, and the material's own pattern time.
+  // Animation clocks (see animation.ts): motion time, and the material's own pattern time.
   useFrame((state) => {
     state.gl.getDrawingBufferSize(bufferSize);
     const t = state.clock.elapsedTime;
-    for (const pm of allMats) {
+    for (const pm of mats) {
       for (const m of [pm.material, pm.halo]) {
         if (!m) continue;
-        const a = m.userData.animSpec as AnimationSpec;
-        const anim = m.userData.anim as AnimUniforms | undefined;
-        if (anim) {
-          anim.uAnTime.value = t * a.speed * 2;
-          anim.uAnPlantTime.value = t * m.userData.plantSpeed * 2;
-          anim.uAnWTime.value = t * m.userData.wholeSpeed * 2;
-          anim.uAnRes.value.copy(bufferSize);
+        const sp = m.userData.animSpec as AnimationSpec;
+        const u = m.userData.anim as AnimUniforms | undefined;
+        if (u) {
+          u.uAnTime.value = t * sp.speed * 2;
+          u.uAnPlantTime.value = t * m.userData.plantSpeed * 2;
+          u.uAnWTime.value = t * m.userData.wholeSpeed * 2;
+          u.uAnRes.value.copy(bufferSize);
         }
         // Pattern motion: Dream bands flow, Glitch blocks/grain re-roll. 0 = still image.
-        if (m instanceof THREE.ShaderMaterial && m.uniforms.uTime) m.uniforms.uTime.value = a.type === "pattern" ? t * a.amount * a.speed : 0;
+        if (m instanceof THREE.ShaderMaterial && m.uniforms.uTime) m.uniforms.uTime.value = sp.type === "pattern" ? t * sp.amount * sp.speed : 0;
       }
     }
   });
 
+  if (!list) return <>{geos.map((g, i) => <mesh key={i} geometry={g.geometry} material={mats[i].material} castShadow />)}</>;
+  return (
+    <>
+      {geos.map((g, i) => (
+        <Part key={i} geometry={g.geometry} mats={mats[i]} matrices={assembly[list]} anchors={assembly.anchors[list]} />
+      ))}
+    </>
+  );
+}
+
+export default function Plant() {
+  const spec = usePlant((s) => s.spec);
+  const p = spec.parts;
+
+  const layout = useMemo(
+    () => layoutPlant(shapesOf(spec)),
+    // Only the settings that move things around; petal colors, center looks etc. don't change the layout.
+    [p.stem.shape, p.leaves.shape, spec.architecture, p.sepals.shape.budCount, p.petals.shape.size],
+  );
+  const assembly = useMemo(
+    () => assemble(shapesOf(spec), layout),
+    [layout, p.petals.shape, p.center.shape.size, p.sepals.shape.count],
+  );
+  useDisposeOnChange(useMemo(() => [layout.stemGeometry], [layout]));
+
+  // What acts on the whole plant (animation.ts): the stem's sway and glitch, which every other part follows so it
+  // stays attached, and the whole-plant glitch (spec.plantAnimation).
+  const sa = p.stem.animation;
+  const stemSway = sa.type === "sway" ? sa.amount : 0;
+  const stemGlitch = sa.type === "glitch" ? sa.amount : 0;
+  const plant = useMemo<PlantMotion>(
+    () => ({ stemSway, stemGlitch, stemGlitchBlock: sa.glitchBlock, stemSpeed: sa.speed, stemLength: p.stem.shape.length, whole: spec.plantAnimation }),
+    [stemSway, stemGlitch, sa.glitchBlock, sa.speed, p.stem.shape.length, spec.plantAnimation],
+  );
+
   return (
     <group>
-      <mesh geometry={stemGeo} material={stemMat.material} castShadow />
-      <Part geometry={leaf} mats={leafMat} matrices={parts.leaves} anchors={parts.anchors.leaves} />
-      <Part geometry={receptacle} mats={receptacleMat} matrices={parts.receptacles} anchors={parts.anchors.receptacles} />
-      <Part geometry={sepal} mats={sepalMat} matrices={parts.sepals} anchors={parts.anchors.sepals} />
-      <Part
-        geometry={petalGeo}
-        mats={petalMat}
-        matrices={fused ? parts.heads : parts.petals}
-        anchors={fused ? parts.anchors.heads : parts.anchors.petals}
-      />
-      {center.map((c, i) => (
-        <Part key={i} geometry={c.geometry} mats={centerMats[i]} matrices={parts.heads} anchors={parts.anchors.heads} />
+      {PART_MESHES.map((def) => (
+        <PartMesh key={def.id} def={def} spec={spec} layout={layout} assembly={assembly} plant={plant} />
       ))}
-      <Part geometry={bud} mats={budMat} matrices={parts.buds} anchors={parts.anchors.buds} />
     </group>
   );
 }

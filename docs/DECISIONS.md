@@ -13,6 +13,17 @@ Template:
 
 ---
 
+## 2026-11-06 — Per-part settings live in one record; drawn meshes come from a registry
+
+**Choice:** `spec.parts[part] = { shape, build, color, material, animation }`. Drawing is driven by
+`scene/parts.ts PART_MESHES` (one entry per mesh; stem covers receptacles, sepals cover buds) and one generic
+`<PartMesh>` pipeline in Plant.tsx. The panel builds part sections from a list and edits via `setPart`.
+**Why:** each per-part feature used to need edits in four records, seven hand-written memos and five panel
+functions. Now a new layer (Growing State) or save/load is a one-place change.
+**Alternatives considered:** keeping the flat records and only deduplicating Plant.tsx (less churn, but the spec
+would still be split); putting the registry in `src/plant/` (it holds render info like roughness and halo, so it
+sits in `src/scene/`).
+
 ## 2026-11-06 — Color is computed in the shader from geometry data (aAlong, aPiece)
 
 **Choice:** One `ColorSpec` per part; builders write position data (`aAlong`, `aPiece`), and every material

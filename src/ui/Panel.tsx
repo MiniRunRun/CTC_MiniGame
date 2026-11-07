@@ -10,7 +10,14 @@ import { budWidth, sepalWidth } from "../plant/sepal";
 import { paintMatcap } from "../scene/matcap";
 import { buildPreset } from "../plant/spec";
 import { RAMP_PRESETS } from "../plant/spec";
-import type { AnimationSpec, BuildPreset, BuildSpec, ColorBy, ColorSpec, DreamSpec, GlitchSpec, MaterialPart, MaterialType, PearlSpec } from "../plant/spec";
+import type { BuildPreset, ColorBy, DreamSpec, GlitchSpec, MaterialType, PartLayer, PartName, PartsSpec, PearlSpec } from "../plant/spec";
+
+/** One layer of one part from the store + a setter that merges into the latest state. */
+function useLayer<P extends PartName, L extends PartLayer>(part: P, layer: L) {
+  const value = usePlant((st) => st.spec.parts[part][layer]);
+  const setPart = usePlant((st) => st.setPart);
+  return [value, (patch: Partial<PartsSpec[P][L]>) => setPart(part, layer, patch)] as const;
+}
 
 const DRAWN = { value: "drawn" as const, label: "Drawn 手绘 ✎" };
 
@@ -53,17 +60,16 @@ const PRIMITIVES = [
  * Form → Build 构成 (plant/build.ts): Smooth, Pieces 拼块 (primitives scattered along the part) or Fused 融合
  * (the pieces melted into one blob). Abstract / Blocks / Cubes are presets of the same pieces settings.
  */
-function BuildControls({ part }: { part: MaterialPart }) {
-  const b = usePlant((st) => st.spec.builds[part]);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<BuildSpec>) => update("builds", { [part]: { ...usePlant.getState().spec.builds[part], ...patch } });
-  const also = part === "stem" ? " (also receptacles 花托)" : part === "sepals" ? " (also buds 花蕾)" : "";
+function BuildControls({ part }: { part: PartName }) {
+  const [b, set] = useLayer(part, "build");
+  const setPart = usePlant((st) => st.setPart);
+  const also = PART_SECTIONS.find((x) => x.part === part)?.also ?? "";
   const flower = part === "petals" && b.mode === "fused" && b.flower;
   // A preset sets the build and the coloring that goes with it (Material → Color).
   const applyPreset = (k: BuildPreset) => {
     const p = buildPreset(k, part);
     set(p.build);
-    update("colors", { [part]: { ...usePlant.getState().spec.colors[part], ...p.color } });
+    setPart(part, "color", p.color);
   };
   return (
     <div className="subgroup">
@@ -139,18 +145,12 @@ function BuildControls({ part }: { part: MaterialPart }) {
 }
 
 /** A flower-part section with its four categories. */
-function PartSection(props: {
-  num: string;
-  en: string;
-  zh: string;
-  open?: boolean;
-  part: MaterialPart;
-  form: ReactNode;
-}) {
+function PartSection(props: PartSectionDef & { num: string }) {
+  const Shape = props.Shape;
   return (
     <Section num={props.num} en={props.en} zh={props.zh} open={props.open}>
       <Category en="Form" zh="形态" open>
-        {props.form}
+        <Shape />
         <BuildControls part={props.part} />
       </Category>
       <Category en="Material" zh="材质">
@@ -168,9 +168,7 @@ function PartSection(props: {
 }
 
 function StemControls() {
-  const s = usePlant((st) => st.spec.stem);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<typeof s>) => update("stem", patch);
+  const [s, set] = useLayer("stem", "shape");
   const mode = usePlant((st) => st.spec.architecture.mode);
   return (
     <>
@@ -199,9 +197,7 @@ function StemControls() {
 }
 
 function LeafControls() {
-  const l = usePlant((st) => st.spec.leaves);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<typeof l>) => update("leaves", patch);
+  const [l, set] = useLayer("leaves", "shape");
   return (
     <>
       <Choice
@@ -238,10 +234,8 @@ function LeafControls() {
 }
 
 function SepalControls() {
-  const sp = usePlant((st) => st.spec.sepals);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<typeof sp>) => update("sepals", patch);
-  const petalColor = usePlant((st) => st.spec.petals.color);
+  const [sp, set] = useLayer("sepals", "shape");
+  const petalColor = usePlant((st) => st.spec.parts.petals.shape.color);
   return (
     <>
       <Slider label="Sepal Count 萼片数量" value={sp.count} min={0} max={10} step={1} onChange={(count) => set({ count })} />
@@ -305,9 +299,7 @@ function ArchitectureControls() {
 }
 
 function PetalControls() {
-  const p = usePlant((st) => st.spec.petals);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<typeof p>) => update("petals", patch);
+  const [p, set] = useLayer("petals", "shape");
   return (
     <>
       <Choice
@@ -349,9 +341,7 @@ function PetalControls() {
 }
 
 function CenterControls() {
-  const c = usePlant((st) => st.spec.center);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<typeof c>) => update("center", patch);
+  const [c, set] = useLayer("center", "shape");
   return (
     <>
       <Choice
@@ -395,12 +385,10 @@ const RAMP_ENDS: Record<ColorBy, [string, string]> = {
  * Color 颜色 (top of the Material category): ONE ramp per part + what picks the spot on it (scene/partColor.ts).
  * Every material style reads it (Glitch keeps its own greys). "Part" = the Form colors as built, no ramp.
  */
-function ColorControls({ part }: { part: MaterialPart }) {
-  const c = usePlant((st) => st.spec.colors[part]);
-  const style = usePlant((st) => st.spec.materials[part].type);
-  const build = usePlant((st) => st.spec.builds[part].mode);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<ColorSpec>) => update("colors", { [part]: { ...usePlant.getState().spec.colors[part], ...patch } });
+function ColorControls({ part }: { part: PartName }) {
+  const [c, set] = useLayer(part, "color");
+  const style = usePlant((st) => st.spec.parts[part].material.type);
+  const build = usePlant((st) => st.spec.parts[part].build.mode);
   const showRamp = c.by !== "part" || style === "dream";
   const ends = RAMP_ENDS[c.by];
   const names = c.ramp.map((_, i) => (i === 0 && ends[0] ? `1 ${ends[0]}` : i === c.ramp.length - 1 && ends[1] ? `${i + 1} ${ends[1]}` : String(i + 1)));
@@ -438,17 +426,16 @@ function ColorControls({ part }: { part: MaterialPart }) {
 
 /**
  * Material category (材质) of every part section. Materials are still images; motion is in Animation.
- * Natural / Pearl 珍珠 / Dream 梦境 / Glitch 故障, each with its own settings, stored in spec.materials[part].
+ * Natural / Pearl 珍珠 / Dream 梦境 / Glitch 故障, each with its own settings, stored in spec.parts[part].material.
  */
-function MaterialControls({ part }: { part: MaterialPart }) {
-  const m = usePlant((st) => st.spec.materials[part]);
-  const update = usePlant((st) => st.update);
-  // Always start from the latest store state so quick successive changes don't undo each other.
-  const latest = () => usePlant.getState().spec.materials[part];
-  const setType = (type: MaterialType) => update("materials", { [part]: { ...latest(), type } });
-  const setPearl = (patch: Partial<PearlSpec>) => update("materials", { [part]: { ...latest(), pearl: { ...latest().pearl, ...patch } } });
-  const setDream = (patch: Partial<DreamSpec>) => update("materials", { [part]: { ...latest(), dream: { ...latest().dream, ...patch } } });
-  const setGlitch = (patch: Partial<GlitchSpec>) => update("materials", { [part]: { ...latest(), glitch: { ...latest().glitch, ...patch } } });
+function MaterialControls({ part }: { part: PartName }) {
+  const [m, set] = useLayer(part, "material");
+  // Nested settings start from the latest store state so quick successive changes don't undo each other.
+  const latest = () => usePlant.getState().spec.parts[part].material;
+  const setType = (type: MaterialType) => set({ type });
+  const setPearl = (patch: Partial<PearlSpec>) => set({ pearl: { ...latest().pearl, ...patch } });
+  const setDream = (patch: Partial<DreamSpec>) => set({ dream: { ...latest().dream, ...patch } });
+  const setGlitch = (patch: Partial<GlitchSpec>) => set({ glitch: { ...latest().glitch, ...patch } });
   return (
     <>
       <Choice
@@ -473,12 +460,9 @@ function MaterialControls({ part }: { part: MaterialPart }) {
  * Animation category (动画): the part picks ONE motion, which moves only this part.
  * Pattern motion is only offered for materials that have a pattern (Dream, Glitch).
  */
-function AnimationControls({ part }: { part: MaterialPart }) {
-  const a = usePlant((st) => st.spec.animations[part]);
-  const material = usePlant((st) => st.spec.materials[part].type);
-  const update = usePlant((st) => st.update);
-  const set = (patch: Partial<AnimationSpec>) =>
-    update("animations", { [part]: { ...usePlant.getState().spec.animations[part], ...patch } });
+function AnimationControls({ part }: { part: PartName }) {
+  const [a, set] = useLayer(part, "animation");
+  const material = usePlant((st) => st.spec.parts[part].material.type);
   const hasPattern = material === "dream" || material === "glitch";
   const type = a.type === "pattern" && !hasPattern ? "none" : a.type;
   return (
@@ -656,6 +640,23 @@ function EffectControls() {
   );
 }
 
+/** The part sections, in panel order (01 – 05). Each gets the same four categories (PartSection). */
+interface PartSectionDef {
+  part: PartName;
+  en: string;
+  zh: string;
+  open?: boolean;
+  Shape: () => ReactNode; // the part's own shape controls (top of Form)
+  also: string; // other meshes these settings cover
+}
+const PART_SECTIONS: PartSectionDef[] = [
+  { part: "stem", en: "Stem", zh: "茎", open: true, Shape: StemControls, also: " (also receptacles 花托)" },
+  { part: "leaves", en: "Leaves", zh: "叶", Shape: LeafControls, also: "" },
+  { part: "petals", en: "Petals", zh: "花瓣", open: true, Shape: PetalControls, also: "" },
+  { part: "center", en: "Flower Center", zh: "花心", open: true, Shape: CenterControls, also: "" },
+  { part: "sepals", en: "Sepals & Buds", zh: "萼片与花蕾", Shape: SepalControls, also: " (also buds 花蕾)" },
+];
+
 export default function Panel() {
   const reset = usePlant((st) => st.reset);
   return (
@@ -664,11 +665,9 @@ export default function Panel() {
         <h1>Flower Builder</h1>
         <button type="button" className="ghost" onClick={reset}>Reset 重置</button>
       </div>
-      <PartSection num="01" en="Stem" zh="茎" open part="stem" form={<StemControls />} />
-      <PartSection num="02" en="Leaves" zh="叶" part="leaves" form={<LeafControls />} />
-      <PartSection num="03" en="Petals" zh="花瓣" open part="petals" form={<PetalControls />} />
-      <PartSection num="04" en="Flower Center" zh="花心" open part="center" form={<CenterControls />} />
-      <PartSection num="05" en="Sepals & Buds" zh="萼片与花蕾" part="sepals" form={<SepalControls />} />
+      {PART_SECTIONS.map((sec, i) => (
+        <PartSection key={sec.part} num={String(i + 1).padStart(2, "0")} {...sec} />
+      ))}
       <Section num="06" en="Architecture" zh="整体结构" open>
         <ArchitectureControls />
       </Section>

@@ -13,6 +13,25 @@ Template:
 
 ---
 
+## 2026-11-06 — Restructure phase 4: spec.parts + part registry
+
+**Done:**
+- `PlantSpec` regrouped: `spec.parts[part] = { shape, build, color, material, animation }` (PartSpec), plus
+  plant-level `architecture`, `plantAnimation`, `scene`, `effect`. Removed the separate `materials`, `animations`,
+  `builds`, `colors` records and the top-level `stem` / `leaves` / … keys. `MaterialPart` is now `PartName`.
+- Store: `setPart(part, layer, patch)` merges into the latest state; `update(key, patch)` is for plant-level keys.
+- New `src/scene/parts.ts` registry `PART_MESHES`: one entry per drawn mesh (stem, receptacle, leaf, petal,
+  center, sepal, bud) with its source geometry, axis, list of copies, anim kind, size, roughness, halo, follow.
+  `Plant.tsx` is now one `<PartMesh>` component run for every entry (was 7 geometry memos + 7 material memos).
+  `layoutPlant` / `assemble` take `shapesOf(spec)`.
+- Panel: one `useLayer(part, layer)` hook for every control; part sections come from a `PART_SECTIONS` list.
+- No visible change. Tested: stem Pieces + stem Glitch, whole fused flower, center Dream, sepals Pieces, leaves
+  Glitch, spiral stem, Spike architecture, petals Along + Blender ramp, center Noise, Reset. No console errors.
+
+**Not finished / known issues:** same as phase 3 (shadows don't animate, Glitch ignores Color, center sub-parts
+share one ramp). Growing State still to design.
+**Next:** Growing State (a new layer in PartSpec + one step in `<PartMesh>`); save / load of `PlantSpec` is now easy.
+
 ## 2026-11-06 — Restructure phase 3: one Color per part
 
 **Done:**

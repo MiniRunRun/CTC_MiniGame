@@ -108,7 +108,7 @@ export type BuildPreset = "abstract" | "blocks" | "cubes";
  * Presets for pieces (the three former separate features): build settings plus the coloring that goes with them.
  * `count` depends on the part's size.
  */
-export function buildPreset(preset: BuildPreset, part: MaterialPart): { build: Partial<BuildSpec>; color: Partial<ColorSpec> } {
+export function buildPreset(preset: BuildPreset, part: PartName): { build: Partial<BuildSpec>; color: Partial<ColorSpec> } {
   switch (preset) {
     case "abstract": // one squashed primitive per part, two-color top/underside stripes (Blender reference)
       return {
@@ -159,8 +159,7 @@ export const RAMP_PRESETS: Record<string, string[]> = {
  *   dream   = gradient-map shader with optional halo shell (scene/dreamMaterial.ts)
  *   glitch  = broken-video look: grey levels, stripes, neon accents, grain (scene/glitchMaterial.ts)
  * Materials are still images; all motion lives in AnimationSpec.
- * Materials live in `PlantSpec.materials`, not inside each part's settings, so changing a material never
- * rebuilds the plant's geometry.
+ * Materials are their own layer of the part (PartSpec.material), so changing a material never rebuilds geometry.
  */
 export type MaterialType = "natural" | "pearl" | "dream" | "glitch";
 
@@ -230,8 +229,12 @@ export interface PlantAnimationSpec {
   speed: number; // 0 – 1
 }
 
-/** Which part a material belongs to. Sepals & buds share one; the stem's material is also used for receptacles. */
-export type MaterialPart = "stem" | "leaves" | "petals" | "center" | "sepals";
+/**
+ * The plant's parts (部件). Each has the same five layers (PartSpec). Sepals' settings also cover buds; the stem's
+ * build / color / material / animation also cover receptacles (see scene/parts.ts for how each part is drawn).
+ */
+export type PartName = "stem" | "leaves" | "petals" | "center" | "sepals";
+export const PART_NAMES: PartName[] = ["stem", "leaves", "petals", "center", "sepals"];
 
 /** Scene (场景): things that aren't part of the plant. */
 export interface SceneSpec {
@@ -253,20 +256,43 @@ export interface EffectSpec {
   grain: number; // 0 – 1, film noise
 }
 
-export interface PlantSpec {
+/** Shape settings per part (外形, the Form category's first block). */
+export interface PartShapes {
   stem: StemSpec;
   leaves: LeafSpec;
   petals: PetalSpec;
   center: CenterSpec;
   sepals: SepalSpec;
+}
+
+/**
+ * Everything about one part, in pipeline order:
+ *   shape → build (smooth / pieces / fused) → color (ramp) → material (lighting style) → animation.
+ * Growing State will be the next layer.
+ */
+export interface PartSpec<S> {
+  shape: S;
+  build: BuildSpec;
+  color: ColorSpec;
+  material: MaterialSpec;
+  animation: AnimationSpec;
+}
+export type PartLayer = keyof PartSpec<unknown>;
+export type PartsSpec = { [P in PartName]: PartSpec<PartShapes[P]> };
+
+export interface PlantSpec {
+  parts: PartsSpec;
   architecture: ArchitectureSpec;
-  materials: Record<MaterialPart, MaterialSpec>;
-  animations: Record<MaterialPart, AnimationSpec>; // same parts as materials
-  builds: Record<MaterialPart, BuildSpec>; // Form → Build (smooth / pieces / fused) per part
-  colors: Record<MaterialPart, ColorSpec>; // Material → Color ramp per part
   plantAnimation: PlantAnimationSpec;
   scene: SceneSpec;
   effect: EffectSpec;
+}
+
+/** What layout / assemble need: every part's shape plus the architecture. */
+export type PlantShapes = PartShapes & { architecture: ArchitectureSpec };
+export function shapesOf(spec: PlantSpec): PlantShapes {
+  const p = spec.parts;
+  return { stem: p.stem.shape, leaves: p.leaves.shape, petals: p.petals.shape, center: p.center.shape, sepals: p.sepals.shape, architecture: spec.architecture };
 }
 
 /** Default material: natural, with pearl and dream settings ready for when the player switches. */
@@ -313,7 +339,7 @@ function material(halo: number): MaterialSpec {
 
 /** Default build: smooth, with cube settings ready for when the player switches. */
 // Default pieces settings = the Cubes preset.
-function build(part: MaterialPart): BuildSpec {
+function build(part: PartName): BuildSpec {
   return {
     mode: "smooth",
     primitive: "cube",
@@ -344,88 +370,92 @@ function animation(): AnimationSpec {
 }
 
 export const DEFAULT_SPEC: PlantSpec = {
-  stem: {
-    shape: "curved",
-    length: 1,
-    thickness: 0.018,
-    bend: 0.35,
-    lean: 10,
-    leanDirection: 30,
-    branches: 3,
-    color: "#4f8a3c",
-  },
-  leaves: {
-    shape: "oval",
-    count: 6,
-    size: 0.16,
-    arrangement: "alternate",
-    angle: 50,
-    color: "#4a8a3a",
-    // Starter drawing: a lobed leaf (like oak), so "Drawn" looks different from the presets before the player draws.
-    drawn: sampleProfile((v) => 0.2 * Math.pow(4 * v * (1 - v), 0.6) * (0.75 + 0.25 * Math.sin(v * Math.PI * 8))),
-  },
-  petals: {
-    shape: "round",
-    count: 8,
-    layers: 2,
-    size: 0.17,
-    curvature: 0.25,
-    spread: 70,
-    color: "#e98bb0",
-    // Starter drawing: a spoon-shaped petal, narrow at the base and wide near the tip.
-    drawn: sampleProfile((v) => 0.34 * Math.pow(Math.sin(Math.PI * v), 0.5) * (0.4 + 0.6 * v)),
-    stack: false,
-    layerGap: 0.05,
-  },
-  center: {
-    type: "disc",
-    size: 0.07,
-    height: 0.02,
-    density: 120,
-    color: "#e8b923",
-  },
-  sepals: {
-    count: 5,
-    shape: "pointed",
-    budShape: "oval",
-    budCount: 1,
-    color: "#5d9a45",
-    drawnSepal: sampleProfile((v) => 0.16 * Math.pow(1 - v, 0.8) * Math.pow(Math.min(1, v * 6), 0.5)),
-    drawnBud: sampleProfile((v) => 0.35 * Math.sin(Math.PI * Math.pow(v, 0.6))),
+  parts: {
+    stem: {
+      shape: {
+        shape: "curved",
+        length: 1,
+        thickness: 0.018,
+        bend: 0.35,
+        lean: 10,
+        leanDirection: 30,
+        branches: 3,
+        color: "#4f8a3c",
+      },
+      build: build("stem"),
+      color: paint(["#2f5d2a", "#4f8a3c", "#b8e07a"]),
+      material: material(0),
+      animation: animation(),
+    },
+    leaves: {
+      shape: {
+        shape: "oval",
+        count: 6,
+        size: 0.16,
+        arrangement: "alternate",
+        angle: 50,
+        color: "#4a8a3a",
+        // Starter drawing: a lobed leaf (like oak), so "Drawn" looks different from the presets before the player draws.
+        drawn: sampleProfile((v) => 0.2 * Math.pow(4 * v * (1 - v), 0.6) * (0.75 + 0.25 * Math.sin(v * Math.PI * 8))),
+      },
+      build: build("leaves"),
+      color: paint(["#2f6b2a", "#4a8a3a", "#d9f2a6"]),
+      material: material(0),
+      animation: animation(),
+    },
+    petals: {
+      shape: {
+        shape: "round",
+        count: 8,
+        layers: 2,
+        size: 0.17,
+        curvature: 0.25,
+        spread: 70,
+        color: "#e98bb0",
+        // Starter drawing: a spoon-shaped petal, narrow at the base and wide near the tip.
+        drawn: sampleProfile((v) => 0.34 * Math.pow(Math.sin(Math.PI * v), 0.5) * (0.4 + 0.6 * v)),
+        stack: false,
+        layerGap: 0.05,
+      },
+      build: build("petals"),
+      color: paint(["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"]),
+      material: material(0.25), // petals get a halo by default when switched to Dream
+      animation: animation(),
+    },
+    center: {
+      shape: {
+        type: "disc",
+        size: 0.07,
+        height: 0.02,
+        density: 120,
+        color: "#e8b923",
+      },
+      build: build("center"),
+      color: paint(["#7a4a12", "#e8b923", "#ff8a3d"]),
+      material: material(0),
+      animation: animation(),
+    },
+    sepals: {
+      shape: {
+        count: 5,
+        shape: "pointed",
+        budShape: "oval",
+        budCount: 1,
+        color: "#5d9a45",
+        drawnSepal: sampleProfile((v) => 0.16 * Math.pow(1 - v, 0.8) * Math.pow(Math.min(1, v * 6), 0.5)),
+        drawnBud: sampleProfile((v) => 0.35 * Math.sin(Math.PI * Math.pow(v, 0.6))),
+      },
+      build: build("sepals"),
+      color: paint(["#3c6e2c", "#5d9a45", "#d9f2a6"]),
+      material: material(0),
+      animation: animation(),
+    },
   },
   architecture: {
     mode: "single",
     flowers: 12,
   },
-  materials: {
-    stem: material(0),
-    leaves: material(0),
-    petals: material(0.25), // petals get a halo by default when switched to Dream
-    center: material(0),
-    sepals: material(0),
-  },
-  animations: {
-    stem: animation(),
-    leaves: animation(),
-    petals: animation(),
-    center: animation(),
-    sepals: animation(),
-  },
   plantAnimation: { glitch: 0, glitchBlock: 0.4, speed: 0.5 },
-  builds: {
-    stem: build("stem"),
-    leaves: build("leaves"),
-    petals: build("petals"),
-    center: build("center"),
-    sepals: build("sepals"),
-  },
-  colors: {
-    stem: paint(["#2f5d2a", "#4f8a3c", "#b8e07a"]),
-    leaves: paint(["#2f6b2a", "#4a8a3a", "#d9f2a6"]),
-    petals: paint(["#ff9a1f", "#f283c0", "#9fa3d6", "#8a7a2a", "#1f3a2a"]),
-    center: paint(["#7a4a12", "#e8b923", "#ff8a3d"]),
-    sepals: paint(["#3c6e2c", "#5d9a45", "#d9f2a6"]),
-  },
   scene: {
     background: "#1d1f24",
     ground: true,

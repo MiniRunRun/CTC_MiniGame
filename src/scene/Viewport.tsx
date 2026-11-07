@@ -8,7 +8,7 @@ import { usePlant } from "../state/store";
 
 export default function Viewport() {
   // Aim the camera around the upper part of the stem, where the flower is.
-  const stemLength = usePlant((s) => s.spec.stem.length);
+  const stemLength = usePlant((s) => s.spec.parts.stem.shape.length);
   // Scene settings: background color and whether to show the ground (hide it for a clean, graphic image).
   const scene = usePlant((s) => s.spec.scene);
   const effectOn = usePlant((s) => s.spec.effect.mode !== "none");

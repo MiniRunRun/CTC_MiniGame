@@ -1,6 +1,6 @@
 # Restructure plan: one pipeline per part (proposal, 2026-11-05)
 
-Status: **phases 1–3 done (2026-11-05/06)**; phase 4 not started. When a phase is done, move its notes into
+Status: **all 4 phases done (2026-11-05/06)**. When a phase is done, move its notes into
 ARCHITECTURE.md / DECISIONS.md and mark it here.
 
 ## Problem (found by reading the code)
@@ -39,7 +39,7 @@ Features were added one by one, so the same idea now exists several times:
 ## Code shape
 
 - `PlantSpec.parts[part] = { shape, build, color, material, animation }` (+ shared plant-level settings).
-- `src/plant/parts.ts` registry: one entry per part (stem, leaves, petals, center, sepals, buds, receptacles) with
+- `src/scene/parts.ts` registry (done there, since it also holds render info): one entry per part (stem, leaves, petals, center, sepals, buds, receptacles) with
   its shape builder, length axis, anim kind, which matrix/anchor list it uses, which settings it shares.
 - `Plant.tsx` loops over the registry with one hook instead of hand-written memos.
 - `src/scene/glsl/common.ts`: hash, noise, ramp, pingpong — shared by all shaders.
@@ -51,5 +51,5 @@ Features were added one by one, so the same idea now exists several times:
 2. ✅ **Merge builds:** `Build = sheet | pieces | fused` for every part; abstract petals and Blocks/Cubes become
    presets of `pieces`. Visible: new combos (any primitive × any part).
 3. ✅ **Unify color:** attributes + one ramp per part, materials read it. Visible: same color controls everywhere.
-4. **Registry + spec regroup:** `spec.parts[part]`, generic `Plant.tsx` / `Panel.tsx`. Makes every later feature
+4. ✅ **Registry + spec regroup:** `spec.parts[part]`, generic `Plant.tsx` / `Panel.tsx`. Makes every later feature
    (Growing State, presets, save/load) a one-place change.

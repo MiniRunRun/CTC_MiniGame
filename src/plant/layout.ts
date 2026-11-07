@@ -3,7 +3,7 @@
 // The meshes for a single flower/bud/leaf are built elsewhere and reused at every placement.
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import type { PlantSpec } from "./spec";
+import type { PlantShapes } from "./spec";
 import { stemCurve, stemRadius, taperedTube } from "./stem";
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -44,7 +44,7 @@ function pointing(dir: THREE.Vector3): THREE.Quaternion {
   return new THREE.Quaternion().setFromUnitVectors(UP, dir);
 }
 
-export function layoutPlant(spec: PlantSpec): PlantLayout {
+export function layoutPlant(spec: PlantShapes): PlantLayout {
   const { stem, architecture: arch } = spec;
   const L = stem.length;
   const main = stemCurve(stem);

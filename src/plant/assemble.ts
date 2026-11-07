@@ -2,7 +2,7 @@
 // The scene draws each part type as a single InstancedMesh, so a plant with 30 flowers × 96 petals
 // is still ~10 draw calls. Pure logic: no React.
 import * as THREE from "three";
-import type { PlantSpec } from "./spec";
+import type { PlantShapes } from "./spec";
 import type { PlantLayout, Placement } from "./layout";
 import { petalPlacements } from "./petal";
 import { ring, type RingPlacement } from "./blade";
@@ -39,7 +39,7 @@ export function ringMatrix(r: RingPlacement): THREE.Matrix4 {
     .multiply(new THREE.Matrix4().makeScale(r.scale, r.scale, r.scale));
 }
 
-export function assemble(spec: PlantSpec, layout: PlantLayout): Assembly {
+export function assemble(spec: PlantShapes, layout: PlantLayout): Assembly {
   const anchors: Assembly["anchors"] = { petals: [], sepals: [], receptacles: [], heads: [], buds: [], leaves: [] };
   const out: Assembly = { petals: [], sepals: [], receptacles: [], heads: [], buds: [], leaves: [], anchors };
   const inner = spec.center.size * 0.35;

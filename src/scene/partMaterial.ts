@@ -1,7 +1,7 @@
 // Turns one part's MaterialSpec (natural / pearl / dream / glitch) + its Color into three.js materials.
 // Used by Plant.tsx for every part: stem, leaves, petals, center, sepals & buds.
 import * as THREE from "three";
-import type { AnimationSpec, ColorSpec, MaterialPart, MaterialSpec } from "../plant/spec";
+import type { AnimationSpec, ColorSpec, PartName, MaterialSpec } from "../plant/spec";
 import { applyPartColor } from "./partColor";
 import { applyAnimation, type AnimKind, type PlantMotion } from "./animation";
 import { makeMatcapTexture } from "./matcap";
@@ -28,7 +28,7 @@ export interface PartAnim {
   spec: AnimationSpec;
   kind: AnimKind;
   size: number;
-  part: MaterialPart;
+  part: PartName;
   /** Whole-plant motion: stem sway (followed unless this is the stem itself) and whole-plant glitch. */
   plant: PlantMotion;
   follow: boolean;
